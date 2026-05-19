@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KitaFinance - Digital Cashflow</title>
+  <title>KitaFinance - Pendamping Finansial Bersama</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <script>
@@ -11,27 +11,41 @@
   </script>
   <style>
     * {
-      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     
-    /* Palet Warna Solid Premium & Nyaman di Mata (Matte & Pastel Vibrant) */
+    /* DEFINISI PALET WARNA MASTER - SUPER COLORFUL & SOLID EXTREME */
     html[data-theme="light"] {
-      --bg-body: #f3f4f6; 
-      --bg-card: #ffffff; 
-      --text-main: #1f2937; 
-      --border: #e5e7eb;
-      --accent-pink: #db2777;
+      --bg-body: #f0f4ff;          /* Biru pastel muda segar */
+      --bg-card: #ffffff;          /* Putih bersih */
+      --text-main: #0f172a;        /* Navy gelap */
+      --border: #cbd5e1;           /* Garis pembatas terang */
+      --nav-bg: #e0e7ff;           /* Latar navigasi indigo muda */
+      
+      /* Warna Status Kas Solid */
+      --pink-primary: #ff4a8b;     /* Pop Pink menyala */
+      --green-in: #10b981;         /* Hijau Mint cerah */
+      --red-out: #f43f5e;          /* Merah Coral berani */
     }
     html[data-theme="dark"] {
-      --bg-body: #0f111a; 
-      --bg-card: #1a1d29; 
-      --text-main: #f9fafb; 
-      --border: #2a2e3f;
-      --accent-pink: #f472b6;
+      --bg-body: #0b0c13;          /* Hitam obsidian teduh */
+      --bg-card: #161825;          /* Card navy gelap gulita */
+      --text-main: #f8fafc;        /* Putih salju terang */
+      --border: #25283d;           /* Garis pembatas gelap */
+      --nav-bg: #1c1e30;           /* Navigasi gelap kontras */
+      
+      /* Warna Status Kas Solid */
+      --pink-primary: #ff4a8b;
+      --green-in: #10b981;
+      --red-out: #f43f5e;
     }
+    
     body { background-color: var(--bg-body); color: var(--text-main); }
+    .btn-pink { background-color: var(--pink-primary); color: #ffffff; }
+    .btn-in { background-color: var(--green-in); color: #ffffff; }
+    .btn-out { background-color: var(--red-out); color: #ffffff; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-start antialiased overflow-x-hidden">
@@ -56,8 +70,8 @@
     };
 
     // Load Data Cache LocalStorage
-    if(localStorage.getItem('kita_finance_cloud_v6')) {
-      const saved = JSON.parse(localStorage.getItem('kita_finance_cloud_v6'));
+    if(localStorage.getItem('kita_finance_cloud_v7')) {
+      const saved = JSON.parse(localStorage.getItem('kita_finance_cloud_v7'));
       state.transactions = saved.transactions || state.transactions;
       state.savingGoals = saved.savingGoals || state.savingGoals;
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
@@ -65,7 +79,7 @@
     }
 
     function saveState() {
-      localStorage.setItem('kita_finance_cloud_v6', JSON.stringify({
+      localStorage.setItem('kita_finance_cloud_v7', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
         expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories
       }));
@@ -109,7 +123,7 @@
     function showToast(msg, type='success') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-      toast.className = `p-3 rounded-xl shadow-xl text-xs font-bold text-white flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-300 ${type==='success'?'bg-emerald-600':'bg-rose-600'}`;
+      toast.className = `p-3 rounded-xl shadow-xl text-xs font-bold text-white flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-300 ${type==='success'?'bg-emerald-500':'bg-rose-500'}`;
       toast.innerHTML = `<i class="ti ti-info-circle text-sm"></i><span>${msg}</span>`;
       container.appendChild(toast);
       setTimeout(() => toast.classList.remove('opacity-0', 'translate-y-2'), 50);
@@ -225,14 +239,14 @@
       if(state.screen === 'auth') {
         root.innerHTML = `
           <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-16">
-            <div class="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-[2rem] p-6 text-center shadow-xl">
-              <div class="w-16 h-16 bg-[#e11d48] rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-md"><i class="ti ti-wallet text-3xl"></i></div>
-              <h2 class="text-2xl font-black text-[#e11d48] tracking-tight">KitaFinance</h2>
+            <div class="w-full bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-[2.5rem] p-6 text-center shadow-xl">
+              <div class="w-16 h-16 btn-pink rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-md"><i class="ti ti-wallet text-3xl"></i></div>
+              <h2 class="text-2xl font-black text-[var(--pink-primary)] tracking-tight">KitaFinance</h2>
               <p class="text-xs text-gray-400 mt-1 mb-6 font-medium">Sistem Cloud Terpusat Google Drive</p>
               <form onsubmit="handleLogin(event)" class="text-left space-y-4">
                 <div><label class="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Nama Anggota Pengguna</label>
-                <input type="text" id="username-in" required placeholder="Contoh: Azman" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-[#e11d48]"></div>
-                <button type="submit" class="w-full bg-[#e11d48] text-white font-bold py-3 rounded-xl text-sm shadow-md">Masuk & Muat Data →</button>
+                <input type="text" id="username-in" required placeholder="Contoh: Azman" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-[var(--pink-primary)] text-[var(--text-main)]"></div>
+                <button type="submit" class="w-full btn-pink text-white font-bold py-3.5 rounded-xl text-sm shadow-md">Masuk & Muat Data →</button>
               </form>
             </div>
           </div>`;
@@ -243,25 +257,26 @@
       const totalOut = state.transactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
 
+      // NAVBAR BAWAH MENGGUNAKAN NAV-BG SOLID KONTRAS AGAR COLORFUL DI LIGHT MODE
       root.innerHTML = `
-        <header class="w-full bg-[var(--bg-card)] border-b border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
+        <header class="w-full bg-[var(--bg-card)] border-b-2 border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-[#e11d48] rounded-lg flex items-center justify-center text-white font-bold"><i class="ti ti-bolt"></i></div>
-            <h1 class="font-black text-sm tracking-tight text-[var(--text-main)]">KitaFinance ${state.isLoading?'(...)':''}</h1>
+            <div class="w-8 h-8 btn-pink rounded-lg flex items-center justify-center text-white font-bold shadow-sm"><i class="ti ti-bolt"></i></div>
+            <h1 class="font-black text-base tracking-tight text-[var(--text-main)]">KitaFinance ${state.isLoading?'(...)':''}</h1>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border border-[var(--border)] rounded-full flex items-center justify-center text-lg"><i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-500'}"></i></button>
+            <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-full flex items-center justify-center text-lg shadow-sm"><i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-600'}"></i></button>
             <button onclick="state.screen='auth'; render();" class="w-9 h-9 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center text-lg"><i class="ti ti-logout"></i></button>
           </div>
         </header>
 
         <main class="w-full px-4 pt-4 flex-1 pb-12">${renderTabContent(saldo, totalIn, totalOut)}</main>
 
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--bg-card)] border-t border-[var(--border)] flex justify-around items-center z-50 px-2 rounded-t-[2rem] shadow-2xl">
-          <button onclick="state.activeTab='dashboard'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='dashboard'?'text-[#e11d48]':'text-gray-400'}"><i class="ti ti-smart-home text-xl mb-0.5"></i>Beranda</button>
-          <button onclick="state.activeTab='riwayat'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='riwayat'?'text-[#e11d48]':'text-gray-400'}"><i class="ti ti-receipt text-xl mb-0.5"></i>Riwayat</button>
-          <button onclick="state.activeTab='tabungan'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='tabungan'?'text-[#e11d48]':'text-gray-400'}"><i class="ti ti-pig-money text-xl mb-0.5"></i>Tabungan</button>
-          <button onclick="state.activeTab='settings'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='settings'?'text-[#e11d48]':'text-gray-400'}"><i class="ti ti-settings text-xl mb-0.5"></i>Kategori</button>
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--nav-bg)] border-t-2 border-[var(--border)] flex justify-around items-center z-50 px-2 rounded-t-[2rem] shadow-2xl">
+          <button onclick="state.activeTab='dashboard'; render()" class="flex flex-col items-center justify-center text-[10px] font-black ${state.activeTab==='dashboard'?'text-[var(--pink-primary)]':'text-gray-400'}"><i class="ti ti-smart-home text-xl mb-0.5"></i>Beranda</button>
+          <button onclick="state.activeTab='riwayat'; render()" class="flex flex-col items-center justify-center text-[10px] font-black ${state.activeTab==='riwayat'?'text-[var(--pink-primary)]':'text-gray-400'}"><i class="ti ti-receipt text-xl mb-0.5"></i>Riwayat</button>
+          <button onclick="state.activeTab='tabungan'; render()" class="flex flex-col items-center justify-center text-[10px] font-black ${state.activeTab==='tabungan'?'text-[var(--pink-primary)]':'text-gray-400'}"><i class="ti ti-pig-money text-xl mb-0.5"></i>Tabungan</button>
+          <button onclick="state.activeTab='settings'; render()" class="flex flex-col items-center justify-center text-[10px] font-black ${state.activeTab==='settings'?'text-[var(--pink-primary)]':'text-gray-400'}"><i class="ti ti-settings text-xl mb-0.5"></i>Kategori</button>
         </nav>`;
       if(state.activeTab === 'riwayat') updateFormCategories();
     }
@@ -269,21 +284,30 @@
     function renderTabContent(saldo, totalIn, totalOut) {
       if(state.activeTab === 'dashboard') {
         return `
-          <div class="bg-[#e11d48] rounded-[2rem] p-6 text-white shadow-lg mb-5">
-            <span class="text-xs font-semibold opacity-85 block uppercase tracking-wider">Sisa Saldo Bersama Kas</span>
-            <h2 class="text-3xl font-black my-1 tracking-tight">${formatIDR(saldo)}</h2>
-            <div class="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-white/20">
-              <div class="bg-black/15 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-75 block">Pemasukan</span><span class="text-emerald-300 text-sm font-black">+ ${formatIDR(totalIn)}</span></div>
-              <div class="bg-black/15 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-75 block">Pengeluaran</span><span class="text-rose-300 text-sm font-black">- ${formatIDR(totalOut)}</span></div>
+          <div class="bg-[var(--pink-primary)] rounded-[2rem] p-6 text-white shadow-xl mb-5 border-b-4 border-black/20">
+            <span class="text-xs font-bold uppercase tracking-wider opacity-90">Sisa Saldo Bersama Kas</span>
+            <h2 class="text-3xl font-black my-1.5 tracking-tight">${formatIDR(saldo)}</h2>
+            <div class="grid grid-cols-2 gap-3 mt-5 pt-4 border-t-2 border-white/20">
+              <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-80 block">Pemasukan</span><span class="text-emerald-300 text-sm font-black">+ ${formatIDR(totalIn)}</span></div>
+              <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-80 block">Pengeluaran</span><span class="text-rose-300 text-sm font-black">- ${formatIDR(totalOut)}</span></div>
             </div>
           </div>
 
-          <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-history text-pink-500"></i> Mutasi Arus Terkini</h3></div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 shadow-sm">
+          <div class="grid grid-cols-2 gap-3 mb-5">
+            <div class="bg-blue-500 text-white p-4 rounded-2xl shadow-md border-b-4 border-black/15 font-bold text-xs">
+              <span class="text-[9px] block opacity-80 uppercase mb-1">Penyimpanan</span>Cloud Active
+            </div>
+            <div class="bg-amber-500 text-white p-4 rounded-2xl shadow-md border-b-4 border-black/15 font-bold text-xs">
+              <span class="text-[9px] block opacity-80 uppercase mb-1">Status Sinkron</span>Real-Time
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-history text-[var(--pink-primary)]"></i> Mutasi Arus Terkini</h3></div>
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 shadow-md">
             ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi harian.</p>': state.transactions.slice(0,4).map(t => `
               <div class="py-3.5 flex justify-between items-center text-xs">
                 <div><h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4><span class="text-[10px] font-medium text-gray-400">${t.category} • Oleh ${t.user}</span></div>
-                <span class="font-black text-sm ${t.type==='income'?'text-emerald-500':'text-rose-500'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
+                <span class="font-black text-sm ${t.type==='income'?'text-emerald-600 dark:text-emerald-400':'text-rose-600 dark:text-rose-400'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
               </div>`).join('')}
           </div>`;
       }
@@ -292,49 +316,45 @@
         const isExp = state.subRiwayatTab === 'expense';
         const listData = state.transactions.filter(t => isExp ? t.type==='expense' : t.type==='income');
         return `
-          <div class="w-full flex bg-[var(--bg-card)] border border-[var(--border)] p-1.5 rounded-2xl mb-4 shadow-sm">
-            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${isExp?'bg-[#e11d48] text-white shadow-md':'text-gray-400'}">📉 Daftar Pengeluaran</button>
-            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${!isExp?'bg-[#10b981] text-white shadow-md':'text-gray-400'}">📈 Daftar Pemasukan</button>
+          <div class="w-full flex bg-[var(--bg-card)] border-2 border-[var(--border)] p-1.5 rounded-2xl mb-4 shadow-sm">
+            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${isExp?'bg-[var(--red-out)] text-white shadow-md':'text-gray-400'}">📉 Daftar Pengeluaran</button>
+            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${!isExp?'bg-[var(--green-in)] text-white shadow-md':'text-gray-400'}">📈 Daftar Pemasukan</button>
           </div>
 
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 mb-4 max-h-56 overflow-y-auto shadow-sm">
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 mb-4 max-h-56 overflow-y-auto shadow-sm">
             ${listData.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada catatan pada kategori ini.</p>' : listData.map(t => `
               <div class="py-3.5 flex justify-between items-center text-xs">
                 <div><h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category}</span></div>
                 <div class="flex items-center gap-2">
-                  <span class="font-black text-sm ${isExp?'text-rose-500':'text-emerald-500'}">${formatIDR(t.amount)}</span>
+                  <span class="font-black text-sm ${isExp?'text-[var(--red-out)]':'text-[var(--green-in)]'}">${formatIDR(t.amount)}</span>
                   <button onclick="openEdit('${t.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-edit"></i></button>
                   <button onclick="deleteTx('${t.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
                 </div>
               </div>`).join('')}
           </div>
 
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 shadow-md">
             <div class="flex items-center gap-2 mb-3">
-              <span class="w-2 h-4 ${isExp?'bg-[#e11d48]':'bg-[#10b981]'} rounded-full"></span>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-main)]">${state.editingTxId ? '⚙️ Perbarui Rekap' : '✍️ Tambah Catatan ' + (isExp ? 'Pengeluaran' : 'Pemasukan')}</h3>
+              <span class="w-2 h-4 ${isExp?'bg-[var(--red-out)]':'bg-[var(--green-in)]'} rounded-full"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-main)]">${state.editingTxId ? '⚙️ Perbarui Rekap' : '✍️ Catat Data ' + (isExp ? 'Pengeluaran' : 'Pemasukan')}</h3>
             </div>
             
             <form onsubmit="saveTransaction(event)" class="space-y-4 text-xs">
               <input type="hidden" id="form-id">
-              
               <div>
-                <label class="block text-gray-400 font-bold mb-1.5">Pilih Kategori Rincian</label>
-                <select id="form-cat" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[#e11d48] text-[var(--text-main)]"></select>
+                <label class="block text-gray-400 font-bold mb-1.5">Kategori Rincian</label>
+                <select id="form-cat" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-[var(--pink-primary)] text-[var(--text-main)]"></select>
               </div>
-              
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
-                <input type="text" id="form-desc" required placeholder="${isExp ? 'Contoh: Belanja bahan baku operasional' : 'Contoh: Hasil penjualan/omset harian'}" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#e11d48] text-[var(--text-main)]">
+                <input type="text" id="form-desc" required placeholder="Tulis detail catatan..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--pink-primary)] text-[var(--text-main)]">
               </div>
-              
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Nominal Angka (Rp)</label>
-                <input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-[#e11d48] text-[var(--text-main)]">
+                <input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-[var(--pink-primary)] text-[var(--text-main)]">
               </div>
-              
-              <button type="submit" class="w-full ${isExp?'bg-[#e11d48] hover:bg-rose-500':'bg-[#10b981] hover:bg-emerald-500'} text-white font-bold py-3 rounded-xl text-xs shadow-md">
-                <i class="ti ti-device-floppy mr-1"></i> Simpan Catatan Rekap
+              <button type="submit" class="w-full ${isExp?'btn-out':'btn-in'} text-white font-bold py-3 rounded-xl text-xs shadow-md border-b-4 border-black/15">
+                <i class="ti ti-device-floppy mr-1"></i> Simpan Pencatatan Kas
               </button>
             </form>
           </div>`;
@@ -342,28 +362,28 @@
 
       if(state.activeTab === 'tabungan') {
         return `
-          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-emerald-500"></i> Alokasi Tabungan Goals</h3></div>
+          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-[var(--green-in)]"></i> Alokasi Tabungan Goals</h3></div>
           <div class="space-y-3 mb-5">
-            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target pos tabungan bersama.</p>' : state.savingGoals.map(g => {
+            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border-2 border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target pos tabungan bersama.</p>' : state.savingGoals.map(g => {
               const pct = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
               return `
-                <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 relative shadow-sm">
-                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span>${g.name}</span><span class="text-emerald-500 font-mono">${pct}%</span></div>
+                <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-2xl p-4 relative shadow-md">
+                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span class="text-sm tracking-tight font-bold">${g.name}</span><span class="text-[var(--green-in)] font-mono font-black">${pct}%</span></div>
                   <div class="flex justify-between text-[10px] text-gray-400 mb-2"><span>Ada: ${formatIDR(g.current)}</span><span>Target: ${formatIDR(g.target)}</span></div>
-                  <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border border-[var(--border)]"><div class="h-full bg-emerald-500 rounded-full" style="width: ${pct}%"></div></div>
+                  <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border-2 border-[var(--border)]"><div class="h-full bg-[var(--green-in)] rounded-full" style="width: ${pct}%"></div></div>
                   <div class="absolute right-2.5 top-3.5 flex flex-col gap-1">
-                    <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-emerald-600 text-white rounded-md flex items-center justify-center text-xs"><i class="ti ti-coin"></i></button>
+                    <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-[var(--green-in)] text-white rounded-md flex items-center justify-center text-xs shadow-sm"><i class="ti ti-coin"></i></button>
                     <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-md flex items-center justify-center text-xs"><i class="ti ti-trash"></i></button>
                   </div>
                 </div>`;
             }).join('')}
           </div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
-            <h3 class="text-xs font-bold uppercase text-emerald-500 mb-3">🎯 Set Target Celengan Baru</h3>
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 shadow-md">
+            <h3 class="text-xs font-bold uppercase text-[var(--green-in)] mb-3">🎯 Set Target Celengan Baru</h3>
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
-              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text-main)]"></div>
-              <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-bold text-[var(--text-main)]"></div>
-              <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs">Kunci Target</button>
+              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
+              <button type="submit" class="w-full bg-[var(--green-in)] text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">Kunci Target</button>
             </form>
           </div>`;
       }
@@ -371,25 +391,25 @@
       if(state.activeTab === 'settings') {
         return `
           <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-settings text-indigo-500"></i> Kustomisasi Kategori Finansial</h3></div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 space-y-5 shadow-sm text-xs mb-4">
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 space-y-5 shadow-md text-xs mb-4">
             <div>
-              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pengeluaran (Expense)</label>
+              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5 tracking-wider">Rincian Pos Pengeluaran (Expense)</label>
               <div class="flex gap-2 mb-2">
-                <input type="text" id="new-exp-cat" placeholder="Contoh: Pembelian Cup" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs text-[var(--text-main)]">
+                <input type="text" id="new-exp-cat" placeholder="Contoh: Pembelian Alat" class="flex-1 bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-lg p-2.5 text-xs text-[var(--text-main)] font-semibold">
                 <button onclick="addNewCategory('expense')" class="bg-[#e11d48] text-white font-bold px-3 rounded-xl text-xs">Add</button>
               </div>
-              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-2xl border border-[var(--border)]">
-                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg text-[10px] font-medium shadow-sm text-[var(--text-main)]">${c}</span>`).join('')}
+              <div class="flex flex-wrap gap-1.5 bg-[var(--bg-body)] p-2.5 rounded-2xl border-2 border-[var(--border)]">
+                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border-2 border-[var(--border)] rounded-lg text-[10px] font-bold text-[var(--text-main)] shadow-sm">${c}</span>`).join('')}
               </div>
             </div>
-            <div class="border-t border-[var(--border)] pt-4">
-              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pemasukan (Income)</label>
+            <div class="border-t-2 border-[var(--border)] pt-4">
+              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5 tracking-wider">Rincian Pos Pemasukan (Income)</label>
               <div class="flex gap-2 mb-2">
-                <input type="text" id="new-inc-cat" placeholder="Contoh: Sales Event" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs text-[var(--text-main)]">
+                <input type="text" id="new-inc-cat" placeholder="Contoh: Sales Event" class="flex-1 bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-lg p-2.5 text-xs text-[var(--text-main)] font-semibold">
                 <button onclick="addNewCategory('income')" class="bg-blue-600 text-white font-bold px-3 rounded-xl text-xs">Add</button>
               </div>
-              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-2xl border border-[var(--border)]">
-                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg text-[10px] font-medium shadow-sm text-[var(--text-main)]">${c}</span>`).join('')}
+              <div class="flex flex-wrap gap-1.5 bg-[var(--bg-body)] p-2.5 rounded-2xl border-2 border-[var(--border)]">
+                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border-2 border-[var(--border)] rounded-lg text-[10px] font-bold text-[var(--text-main)] shadow-sm">${c}</span>`).join('')}
               </div>
             </div>
           </div>`;
