@@ -60,19 +60,22 @@
       'Bahan Baku': 'ti-box-seam', 'Operasional': 'ti-settings', 'Makan & Kopi': 'ti-soup',
       'Transport': 'ti-car', 'Hiburan': 'ti-device-gamepad-2', 'Lainnya': 'ti-category',
       'Omset Penjualan': 'ti-building-store', 'Gaji Pokok': 'ti-cash', 'Freelance Proyek': 'ti-briefcase',
-      'Investasi': 'ti-trending-up', 'Tabungan / Simpanan': 'ti-pig-money'
+      'Investasi': 'ti-trending-up', 'Tabungan / Simpanan': 'ti-pig-money', 'Penarikan Tabungan': 'ti-moped'
     };
 
     let state = {
       screen: 'auth', theme: 'light', activeTab: 'dashboard', subRiwayatTab: 'expense',
-      timeFilter: 'month', showSavings: true, limitModal: false,
-      currentUser: null, editingTxId: null, isLoading: false,
+      timeFilter: 'month', showSavings: true, limitModal: false, editTxModal: false, editGoalModal: false,
+      currentUser: null, isLoading: false,
       expenseCategories: [...DEFAULT_EXP_CATS],
       incomeCategories: [...DEFAULT_INC_CATS],
       savingGoals: [],
       transactions: [],
-      // Target Limit Pengeluaran yang Kini Bisa Di-set Dinamis oleh User via Pop-up
-      budgetLimits: { daily: 100000, weekly: 700000, monthly: 3000000 }
+      budgetLimits: { daily: 100000, weekly: 700000, monthly: 3000000 },
+      
+      // State penampung data modal edit
+      editingTx: null,
+      editingGoal: null
     };
 
     const STATIC_CAT_LIMITS = {
@@ -80,8 +83,8 @@
       'Bahan Baku': 5000000, 'Operasional': 2000000, 'Lainnya': 1000000
     };
 
-    if(localStorage.getItem('kolabuku_state_final_v16')) {
-      const saved = JSON.parse(localStorage.getItem('kolabuku_state_final_v16'));
+    if(localStorage.getItem('kolabuku_state_final_v17')) {
+      const saved = JSON.parse(localStorage.getItem('kolabuku_state_final_v17'));
       state.transactions = saved.transactions || [];
       state.savingGoals = saved.savingGoals || [];
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
@@ -94,7 +97,7 @@
     document.documentElement.setAttribute('data-theme', state.theme);
 
     function saveState() {
-      localStorage.setItem('kolabuku_state_final_v16', JSON.stringify({
+      localStorage.setItem('kolabuku_state_final_v17', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
         expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories,
         showSavings: state.showSavings, theme: state.theme, budgetLimits: state.budgetLimits
@@ -167,7 +170,8 @@
       let daily = 0; let weekly = 0; let monthly = 0;
 
       state.transactions.forEach(tx => {
-        if (tx.type !== 'expense') return;
+        // PERBAIKAN UTAMA: Mengecualikan aktivitas tabungan dari budget monitoring harian/mingguan/bulanan
+        if (tx.type !== 'expense' || tx.category === 'Tabungan / Simpanan') return;
         const txDate = new Date(tx.date);
         if(txDate.toDateString() === now.toDateString()) daily += tx.amount;
         if((now - txDate) <= 7 * 24 * 60 * 60 * 1000) weekly += tx.amount;
@@ -208,38 +212,82 @@
 
     async function saveTransaction(e) {
       e.preventDefault();
-      const id = document.getElementById('form-id').value;
       const desc = document.getElementById('form-desc').value.trim();
       const amount = parseInt(document.getElementById('form-amount').value) || 0;
       const category = document.getElementById('form-cat').value;
+      const targetGoalId = document.getElementById('form-target-goal') ? document.getElementById('form-target-goal').value : "";
       const type = state.subRiwayatTab; 
+      
+      // Update realtime dinamis mengambil tanggal saat disubmit
+      const currentDateString = new Date().toISOString().substring(0,10);
 
       if(!desc || amount <= 0) return showToast('Harap isi data dengan lengkap!', 'error');
 
-      if(id) {
-        const idx = state.transactions.findIndex(t => t.id === id);
-        if(idx !== -1) state.transactions[idx] = { ...state.transactions[idx], desc, amount, type, category };
-      } else {
-        state.transactions.unshift({
-          id: Date.now().toString(), date: new Date().toISOString().substring(0,10),
-          desc, amount, type, category, user: state.currentUser
-        });
-      }
-      state.editingTxId = null;
+      state.transactions.unshift({
+        id: Date.now().toString(), 
+        date: currentDateString,
+        desc, amount, type, category, targetGoalId, user: state.currentUser
+      });
+
       render();
       await syncToCloud();
+      
+      // Reset input form
+      document.getElementById('form-desc').value = "";
+      document.getElementById('form-amount').value = "";
     }
 
-    function openEdit(id) {
-      state.editingTxId = id; state.activeTab = 'riwayat';
+    function openEditModal(id) {
       const tx = state.transactions.find(t => t.id === id);
-      state.subRiwayatTab = tx.type; render();
+      if(!tx) return;
+      state.editingTx = { ...tx };
+      state.editTxModal = true;
+      render();
       
-      document.getElementById('form-id').value = tx.id;
-      document.getElementById('form-desc').value = tx.desc;
-      document.getElementById('form-amount').value = tx.amount;
-      updateFormCategories();
-      document.getElementById('form-cat').value = tx.category;
+      // Update opsi kategori di modal edit
+      const modalCatSel = document.getElementById('modal-edit-cat');
+      const arr = tx.type === 'expense' ? state.expenseCategories : state.incomeCategories;
+      let optionsHtml = arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      if(tx.type === 'expense') optionsHtml += `<option value="Tabungan / Simpanan">💰 Tabungan / Simpanan</option>`;
+      else optionsHtml += `<option value="Penarikan Tabungan">🔄 Penarikan Tabungan</option>`;
+      modalCatSel.innerHTML = optionsHtml;
+      modalCatSel.value = tx.category;
+      
+      toggleModalGoalSelect();
+    }
+
+    function toggleModalGoalSelect() {
+      const cat = document.getElementById('modal-edit-cat').value;
+      const container = document.getElementById('modal-goal-container');
+      if(cat === 'Tabungan / Simpanan' || cat === 'Penarikan Tabungan') {
+        container.classList.remove('hidden');
+        let options = state.savingGoals.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        document.getElementById('modal-edit-target-goal').innerHTML = options;
+        if(state.editingTx && state.editingTx.targetGoalId) {
+          document.getElementById('modal-edit-target-goal').value = state.editingTx.targetGoalId;
+        }
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    async function submitEditTx(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-edit-id').value;
+      const desc = document.getElementById('modal-edit-desc').value.trim();
+      const amount = parseInt(document.getElementById('modal-edit-amount').value) || 0;
+      const category = document.getElementById('modal-edit-cat').value;
+      const targetGoalId = (category === 'Tabungan / Simpanan' || category === 'Penarikan Tabungan') ? document.getElementById('modal-edit-target-goal').value : "";
+
+      const idx = state.transactions.findIndex(t => t.id === id);
+      if(idx !== -1) {
+        state.transactions[idx] = { ...state.transactions[idx], desc, amount, category, targetGoalId };
+        showToast('📝 Transaksi Berhasil Diperbarui!');
+      }
+      state.editTxModal = false;
+      state.editingTx = null;
+      render();
+      await syncToCloud();
     }
 
     async function deleteTx(id) {
@@ -256,18 +304,34 @@
       const target = parseInt(document.getElementById('goal-target').value) || 0;
       if(!name || target <= 0) return;
       state.savingGoals.push({ id: 's_' + Date.now(), name, target, current: 0 });
+      document.getElementById('goal-name').value = "";
+      document.getElementById('goal-target').value = "";
       render(); await syncToCloud();
     }
 
-    async function editSavingGoal(goalId) {
+    function openEditGoalModal(goalId) {
       const goal = state.savingGoals.find(g => g.id === goalId);
       if(!goal) return;
-      const newName = prompt("Ubah Nama Target Tabungan:", goal.name);
-      if(newName === null || !newName.trim()) return;
-      const newTarget = parseInt(prompt("Ubah Target Nominal Anggaran Goals (Rp):", goal.target));
-      if(isNaN(newTarget) || newTarget <= 0) return showToast('Nominal target tidak valid!', 'error');
-      goal.name = newName.trim(); goal.target = newTarget;
-      showToast('🎯 Target Goals berhasil diperbarui!'); render(); await syncToCloud();
+      state.editingGoal = { ...goal };
+      state.editGoalModal = true;
+      render();
+    }
+
+    async function submitEditGoal(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-goal-id').value;
+      const name = document.getElementById('modal-goal-name').value.trim();
+      const target = parseInt(document.getElementById('modal-goal-target').value) || 0;
+
+      const goal = state.savingGoals.find(g => g.id === id);
+      if(goal) {
+        goal.name = name;
+        goal.target = target;
+        showToast('🎯 Target Goals Berhasil Diperbarui!');
+      }
+      state.editGoalModal = false;
+      state.editingGoal = null;
+      render(); await syncToCloud();
     }
 
     async function updateLimits(e) {
@@ -293,6 +357,7 @@
       if(!val) return;
       if(type === 'expense') state.expenseCategories.push(val);
       else state.incomeCategories.push(val);
+      document.getElementById(inputId).value = "";
       render(); await syncToCloud();
     }
 
@@ -309,7 +374,7 @@
 
       let categoryLeakHtml = "";
       const catTotals = {};
-      state.transactions.filter(t => t.type === 'expense').forEach(t => { catTotals[t.category] = (catTotals[t.category] || 0) + t.amount; });
+      state.transactions.filter(t => t.type === 'expense' && t.category !== 'Tabungan / Simpanan').forEach(t => { catTotals[t.category] = (catTotals[t.category] || 0) + t.amount; });
       
       let overBudgetCategories = [];
       for (const cat in catTotals) {
@@ -320,7 +385,7 @@
       if (overBudgetCategories.length > 0) {
         categoryLeakHtml = `<div class="bg-amber-500 text-white p-3 rounded-xl font-bold mb-3 text-xs"><i class="ti ti-info-square-rounded-filled"></i> Limit jebol pada rincian pos: <span class="underline">${overBudgetCategories.join(', ')}</span>.</div>`;
       } else {
-        categoryLeakHtml = `<div class="bg-blue-500 text-white p-3 rounded-xl font-bold mb-3 text-xs"><i class="ti ti-thumb-up-filled"></i> Semua pos pengeluaran kategori bulanan terkendali di dalam batas aman anggaran.</div>`;
+        categoryLeakHtml = `<div class="bg-blue-500 text-white p-3 rounded-xl font-bold mb-3 text-xs"><i class="ti ti-thumb-up-filled"></i> Semua pos belanja bulanan terkendali aman.</div>`;
       }
 
       let recommendationHtml = "";
@@ -356,16 +421,27 @@
       }
 
       const timeFilteredTransactions = filterTransactionsByTime(state.transactions);
+      
+      // LOGIKA BARU: Kalkulasi saldo riil & dana simpanan per pos tabungan secara dinamis berkurang/bertambah
+      state.savingGoals.forEach(g => { g.current = 0; });
+      let akumulasiTabunganRiil = 0;
+
+      state.transactions.slice().reverse().forEach(t => {
+        if (t.type === 'expense' && t.category === 'Tabungan / Simpanan') {
+          akumulasiTabunganRiil += t.amount;
+          const match = state.savingGoals.find(g => g.id === t.targetGoalId);
+          if (match) match.current += t.amount;
+        }
+        if (t.type === 'income' && t.category === 'Penarikan Tabungan') {
+          akumulasiTabunganRiil -= t.amount;
+          const match = state.savingGoals.find(g => g.id === t.targetGoalId);
+          if (match) match.current -= t.amount;
+        }
+      });
+
       const totalIn = timeFilteredTransactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = timeFilteredTransactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
-      
-      const akumulasiTabunganRiil = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
-
-      state.savingGoals.forEach(g => {
-        const matches = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan' && t.desc.toLowerCase() === g.name.toLowerCase());
-        g.current = matches.reduce((acc, curr) => acc + curr.amount, 0);
-      });
 
       root.innerHTML = `
         <header class="w-full bg-[var(--bg-card)] border-b-2 border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md">
@@ -395,6 +471,38 @@
               <button type="submit" class="w-full bg-[var(--pink-primary)] text-white font-bold py-3 rounded-xl shadow-md mt-2">Terapkan Batas Anggaran</button>
             </form>
           </div>
+        </div>
+
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 ${state.editTxModal?'flex':'hidden'} items-center justify-center p-4" onclick="if(event.target===this){state.editTxModal=false;render()}">
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-5 text-left animate-in fade-in duration-150">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-blue-500 mb-4">⚙️ Edit Data Rekap Transaksi</h3>
+            <form onsubmit="submitEditTx(event)" class="space-y-3 text-xs">
+              <input type="hidden" id="modal-edit-id" value="${state.editingTx ? state.editingTx.id : ''}">
+              <div><label class="block text-gray-400 font-bold mb-1">Kategori</label><select id="modal-edit-cat" onchange="toggleModalGoalSelect()" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-bold"></select></div>
+              <div id="modal-goal-container" class="hidden"><label class="block text-amber-500 font-bold mb-1">Kunci Ke Pos Tabungan</label><select id="modal-edit-target-goal" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-bold"></select></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Keterangan</label><input type="text" id="modal-edit-desc" value="${state.editingTx ? state.editingTx.desc : ''}" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-semibold"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Nominal Angka (Rp)</label><input type="number" id="modal-edit-amount" value="${state.editingTx ? state.editingTx.amount : ''}" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-black"></div>
+              <div class="flex gap-2 pt-2">
+                <button type="button" onclick="state.editTxModal=false;render()" class="flex-1 bg-gray-300 dark:bg-gray-700 font-bold py-2.5 rounded-xl">Batal</button>
+                <button type="submit" class="flex-1 bg-blue-500 text-white font-bold py-2.5 rounded-xl shadow-md">Simpan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 ${state.editGoalModal?'flex':'hidden'} items-center justify-center p-4" onclick="if(event.target===this){state.editGoalModal=false;render()}">
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-5 text-left animate-in fade-in duration-150">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-500 mb-4">🎯 Edit Sasaran Pos Celengan</h3>
+            <form onsubmit="submitEditGoal(event)" class="space-y-3 text-xs">
+              <input type="hidden" id="modal-goal-id" value="${state.editingGoal ? state.editingGoal.id : ''}">
+              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="modal-goal-name" value="${state.editingGoal ? state.editingGoal.name : ''}" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-semibold"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="modal-goal-target" value="${state.editingGoal ? state.editingGoal.target : ''}" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-[var(--text-main)] font-black"></div>
+              <div class="flex gap-2 pt-2">
+                <button type="button" onclick="state.editGoalModal=false;render()" class="flex-1 bg-gray-300 dark:bg-gray-700 font-bold py-2.5 rounded-xl">Batal</button>
+                <button type="submit" class="flex-1 bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-md">Perbarui</button>
+              </div>
+            </form>
+          </div>
         </div>`;
       if(state.activeTab === 'riwayat') updateFormCategories();
     }
@@ -406,7 +514,7 @@
         
         const catTotals = {};
         let totalExpenseForChart = 0;
-        state.transactions.filter(t => t.type === 'expense').forEach(t => {
+        state.transactions.filter(t => t.type === 'expense' && t.category !== 'Tabungan / Simpanan').forEach(t => {
           catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
           totalExpenseForChart += t.amount;
         });
@@ -470,9 +578,9 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-chart-pie text-[var(--pink-primary)]"></i> Proporsi Sektor Belanja</h3></div>
+          <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-chart-pie text-[var(--pink-primary)]"></i> Proporsi Sektor Belanja <span class="lowercase italic text-[9px]">(eksklusif celengan)</span></h3></div>
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-4 mb-5 shadow-sm">
-            ${totalExpenseForChart === 0 ? `<p class="text-xs text-gray-400 text-center py-4">Belum ada data belanja yang keluar bulan ini.</p>` : `
+            ${totalExpenseForChart === 0 ? `<p class="text-xs text-gray-400 text-center py-4">Belum ada data belanja riil keluar bulan ini.</p>` : `
               <div class="flex items-center justify-center gap-6">
                 <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
                   <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--border)" stroke-width="4"></circle>
@@ -507,6 +615,8 @@
             ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi harian.</p>': state.transactions.slice(0,4).map(t => {
               const iconCode = CATEGORY_ICONS[t.category] || 'ti-category';
               const isInc = t.type === 'income';
+              const goalObj = state.savingGoals.find(g => g.id === t.targetGoalId);
+              const targetGoalText = goalObj ? ` • Pos: ${goalObj.name}` : "";
               return `
               <div class="py-3.5 flex justify-between items-center text-xs">
                 <div class="flex items-center gap-3">
@@ -515,7 +625,7 @@
                   </div>
                   <div>
                     <h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4>
-                    <span class="text-[10px] font-medium text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category} • Oleh ${t.user}</span>
+                    <span class="text-[10px] font-medium text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category}${targetGoalText} • Oleh ${t.user}</span>
                   </div>
                 </div>
                 <span class="font-black text-sm ${isInc?'text-emerald-600 dark:text-emerald-400':'text-rose-600 dark:text-rose-400'}">${isInc?'+':'-'} ${formatIDR(t.amount)}</span>
@@ -530,15 +640,20 @@
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 shadow-md mb-5">
             <div class="flex items-center gap-2 mb-3">
               <span class="w-2 h-4 ${isExp?'bg-[var(--red-out)]':'bg-[var(--green-in)]'} rounded-full"></span>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-main)]">${state.editingTxId ? '⚙️ Perbarui Rekap' : '✍️ Catat Data ' + (isExp ? 'Pengeluaran' : 'Pemasukan')}</h3>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-main)]">✍️ Catat Data ${isExp ? 'Pengeluaran' : 'Pemasukan'}</h3>
             </div>
             
             <form onsubmit="saveTransaction(event)" class="space-y-4 text-xs">
-              <input type="hidden" id="form-id">
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Kategori Rincian</label>
-                <select id="form-cat" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-pink-500 text-[var(--text-main)]"></select>
+                <select id="form-cat" onchange="toggleFormGoalSelect()" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-pink-500 text-[var(--text-main)]"></select>
               </div>
+              
+              <div id="form-goal-selection-container" class="hidden animate-in fade-in duration-100">
+                <label class="block text-amber-500 font-bold mb-1.5">🎯 Hubungkan / Alokasikan ke Pos Celengan</label>
+                <select id="form-target-goal" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none text-[var(--text-main)]"></select>
+              </div>
+
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
                 <input type="text" id="form-desc" required placeholder="Tulis rincian deskripsi..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
@@ -548,7 +663,7 @@
                 <input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
               </div>
               <button type="submit" class="w-full ${isExp?'btn-out':'btn-in'} text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">
-                <i class="ti ti-device-floppy mr-1"></i> Simpan Catatan Kas
+                <i class="ti ti-device-floppy mr-1"></i> Catat Log Kas Beranda
               </button>
             </form>
           </div>
@@ -565,18 +680,22 @@
           </div>
 
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 mb-4 max-h-64 overflow-y-auto shadow-sm">
-            ${timeFilteredTransactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada catatan pada periode ini.</p>' : timeFilteredTransactions.filter(t => isExp ? t.type==='expense' : t.type==='income').map(t => `
+            ${timeFilteredTransactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada catatan pada periode ini.</p>' : timeFilteredTransactions.filter(t => isExp ? t.type==='expense' : t.type==='income').map(t => {
+              const goalObj = state.savingGoals.find(g => g.id === t.targetGoalId);
+              const suffixGoal = goalObj ? ` (${goalObj.name})` : "";
+              return `
               <div class="py-3.5 flex justify-between items-center text-xs">
                 <div>
                   <h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4>
-                  <span class="text-[10px] text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category}</span>
+                  <span class="text-[10px] text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category}${suffixGoal}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="font-black text-sm ${isExp?'text-[var(--red-out)]':'text-[var(--green-in)]'}">${formatIDR(t.amount)}</span>
-                  <button onclick="openEdit('${t.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-edit"></i></button>
+                  <button onclick="openEditModal('${t.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-edit"></i></button>
                   <button onclick="deleteTx('${t.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
                 </div>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
           </div>`;
       }
 
@@ -593,7 +712,7 @@
                   <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border-2 border-[var(--border)]"><div class="h-full bg-[var(--green-in)] rounded-full" style="width: ${pct}%"></div></div>
                   
                   <div class="absolute right-2.5 top-4 flex gap-1">
-                    <button onclick="editSavingGoal('${g.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm" title="Edit Goals"><i class="ti ti-pencil"></i></button>
+                    <button onclick="openEditGoalModal('${g.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm" title="Edit Goals"><i class="ti ti-pencil"></i></button>
                     <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-sm" title="Hapus"><i class="ti ti-trash"></i></button>
                   </div>
                 </div>`;
@@ -602,7 +721,7 @@
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 shadow-md">
             <h3 class="text-xs font-bold uppercase text-[var(--green-in)] mb-3">🎯 Set Target Celengan Baru</h3>
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
-              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: Laptop Baru Kerja" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: Sinking Fund Kerja" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
               <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
               <button type="submit" class="w-full bg-[var(--green-in)] text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">Kunci Target</button>
             </form>
@@ -644,8 +763,23 @@
       let optionsHtml = arr.map(c => `<option value="${c}">${c}</option>`).join('');
       if(state.subRiwayatTab === 'expense') {
         optionsHtml += `<option value="Tabungan / Simpanan">💰 Tabungan / Simpanan</option>`;
+      } else {
+        optionsHtml += `<option value="Penarikan Tabungan">🔄 Penarikan Tabungan</option>`;
       }
       catSel.innerHTML = optionsHtml;
+      toggleFormGoalSelect();
+    }
+
+    function toggleFormGoalSelect() {
+      const catSel = document.getElementById('form-cat'); if(!catSel) return;
+      const container = document.getElementById('form-goal-selection-container');
+      if(catSel.value === 'Tabungan / Simpanan' || catSel.value === 'Penarikan Tabungan') {
+        container.classList.remove('hidden');
+        let options = state.savingGoals.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        document.getElementById('form-target-goal').innerHTML = options || `<option value="">(Belum ada target pos)</option>`;
+      } else {
+        container.classList.add('hidden');
+      }
     }
 
     render();
