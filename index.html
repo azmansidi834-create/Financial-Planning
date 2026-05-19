@@ -11,23 +11,16 @@
   </script>
   <style>
     * {
-      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    
     html[data-theme="light"] {
-      --bg-body: #f0f4f8;
-      --bg-card: #ffffff;
-      --text-main: #0f172a;
-      --border: #cbd5e1;
+      --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --border: #cbd5e1;
     }
     html[data-theme="dark"] {
-      --bg-body: #09090e;
-      --bg-card: #131322;
-      --text-main: #f8fafc;
-      --border: #26263f;
+      --bg-body: #09090f; --bg-card: #151526; --text-main: #f8fafc; --border: #26263f;
     }
     body { background-color: var(--bg-body); color: var(--text-main); }
   </style>
@@ -35,56 +28,56 @@
 <body class="min-h-screen flex flex-col items-center justify-start antialiased overflow-x-hidden">
 
   <div id="app" class="w-full max-w-md min-h-screen flex flex-col relative pb-24"></div>
-
   <div id="toast-container" class="fixed top-4 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2"></div>
 
   <script>
-    // ── DATABASE & DATA STRUCTURES (LocalStorage Persist)
+    // URL Cloud Database dari Google Apps Script Anda
+    const CLOUD_URL = "PASTE_URL_APPS_SCRIPT_DI_SINI";
+
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
     const DEFAULT_INC_CATS = ['Omset Sales R&R', 'Gaji Pokok', 'Freelance Proyek', 'Investasi'];
 
     let state = {
-      screen: 'auth', // auth | main
-      theme: 'dark', // dark | light
-      activeTab: 'dashboard', // dashboard | riwayat | budgeting | tabungan | settings
-      subRiwayatTab: 'expense', // expense | income
-      currentUser: null,
-      editingTxId: null,
-
-      // Data Arrays kustom yang bisa dikonfigurasi pengguna
+      screen: 'auth', theme: 'dark', activeTab: 'dashboard', subRiwayatTab: 'expense',
+      currentUser: null, editingTxId: null, isLoading: false,
       expenseCategories: [...DEFAULT_EXP_CATS],
       incomeCategories: [...DEFAULT_INC_CATS],
-      
-      savingGoals: [
-        { id: 's1', name: '💻 Laptop Baru Kerja', target: 10000000, current: 4500000 },
-        { id: 's2', name: '💰 Dana Darurat Utama', target: 6000000, current: 2000000 }
-      ],
-      transactions: [
-        { id: 't1', date: '2026-05-19', desc: 'Beli Kopi di Wijaya', amount: 35000, type: 'expense', category: 'Makan & Kopi', user: 'Azman' },
-        { id: 't2', date: '2026-05-18', desc: 'Omset Harian Rock and Ross', amount: 1850000, type: 'income', category: 'Omset Sales R&R', user: 'Azman' }
-      ]
+      savingGoals: [],
+      transactions: []
     };
 
-    // Load LocalStorage Cache Data jika tersedia
-    if(localStorage.getItem('kita_finance_v3')) {
-      const saved = JSON.parse(localStorage.getItem('kita_finance_v3'));
-      state.transactions = saved.transactions || state.transactions;
-      state.savingGoals = saved.savingGoals || state.savingGoals;
-      state.expenseCategories = saved.expenseCategories || state.expenseCategories;
-      state.incomeCategories = saved.incomeCategories || state.incomeCategories;
+    // ── INTEGRASI CLOUD STORAGE (GOOGLE DRIVE VIA SCRIPT) ──
+    async function syncToCloud() {
+      if(!CLOUD_URL || CLOUD_URL.includes("PASTE_URL")) return;
+      try {
+        await fetch(CLOUD_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: "save", state: state })
+        });
+        showToast('☁️ Cloud Sinkron Otomatis!');
+      } catch(e) { console.error("Gagal sinkronisasi cloud", e); }
     }
 
-    function saveState() {
-      localStorage.setItem('kita_finance_v3', JSON.stringify({
-        transactions: state.transactions, savingGoals: state.savingGoals,
-        expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories
-      }));
+    async function loadFromCloud() {
+      if(!CLOUD_URL || CLOUD_URL.includes("PASTE_URL")) return;
+      state.isLoading = true; render();
+      try {
+        const res = await fetch(CLOUD_URL);
+        const cloudData = await res.json();
+        if(cloudData.transactions) {
+          state.transactions = cloudData.transactions;
+          state.savingGoals = cloudData.savingGoals || [];
+          state.expenseCategories = cloudData.expenseCategories || state.expenseCategories;
+          state.incomeCategories = cloudData.incomeCategories || state.incomeCategories;
+          showToast('📥 Data Cloud Berhasil Dimuat!');
+        }
+      } catch(e) { console.error("Gagal memuat dari cloud", e); }
+      state.isLoading = false; render();
     }
 
-    // ── UI HELPERS ──
-    function formatIDR(num) {
-      return 'Rp ' + Math.round(num).toLocaleString('id-ID');
-    }
+    function formatIDR(num) { return 'Rp ' + Math.round(num).toLocaleString('id-ID'); }
 
     function showToast(msg, type='success') {
       const container = document.getElementById('toast-container');
@@ -99,32 +92,23 @@
       }, 2500);
     }
 
-    // ── THEME CONTROLLER ──
     function toggleTheme() {
-      const html = document.documentElement;
-      if (state.theme === 'dark') {
-        state.theme = 'light';
-        html.setAttribute('data-theme', 'light');
-      } else {
-        state.theme = 'dark';
-        html.setAttribute('data-theme', 'dark');
-      }
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', state.theme);
       render();
     }
 
-    // ── BUSINESS LOGIC ACTIONS ──
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
       const user = document.getElementById('username-in').value.trim();
       if(!user) return;
       state.currentUser = user;
       state.screen = 'main';
-      showToast(`Selamat datang, ${user}!`);
+      await loadFromCloud(); // Tarik data online pas login
       render();
     }
 
-    // CRUD Transaksi
-    function saveTransaction(e) {
+    async function saveTransaction(e) {
       e.preventDefault();
       const id = document.getElementById('form-id').value;
       const desc = document.getElementById('form-desc').value.trim();
@@ -132,30 +116,24 @@
       const type = document.getElementById('form-type').value;
       const category = document.getElementById('form-cat').value;
 
-      if(!desc || amount <= 0) return showToast('Harap isi keterangan dan nominal!', 'error');
+      if(!desc || amount <= 0) return showToast('Harap isi data dengan lengkap!', 'error');
 
       if(id) {
         const idx = state.transactions.findIndex(t => t.id === id);
-        if(idx !== -1) {
-          state.transactions[idx] = { ...state.transactions[idx], desc, amount, type, category };
-          showToast('Transaksi diperbarui!');
-        }
+        if(idx !== -1) state.transactions[idx] = { ...state.transactions[idx], desc, amount, type, category };
       } else {
         state.transactions.unshift({
           id: Date.now().toString(), date: new Date().toISOString().substring(0,10),
           desc, amount, type, category, user: state.currentUser
         });
-        showToast('Transaksi berhasil dicatat!');
       }
-      saveState();
       state.editingTxId = null;
       render();
+      await syncToCloud(); // Push otomatis ke Google Drive
     }
 
     function openEdit(id) {
-      state.editingTxId = id;
-      state.activeTab = 'riwayat';
-      render();
+      state.editingTxId = id; state.activeTab = 'riwayat'; render();
       const tx = state.transactions.find(t => t.id === id);
       document.getElementById('form-id').value = tx.id;
       document.getElementById('form-desc').value = tx.desc;
@@ -165,283 +143,220 @@
       document.getElementById('form-cat').value = tx.category;
     }
 
-    function deleteTx(id) {
-      if(confirm('Hapus pencatatan transaksi ini?')) {
+    async function deleteTx(id) {
+      if(confirm('Hapus transaksi ini?')) {
         state.transactions = state.transactions.filter(t => t.id !== id);
-        saveState(); showToast('Transaksi dihapus', 'error'); render();
+        showToast('Transaksi dihapus', 'error'); render();
+        await syncToCloud();
       }
     }
 
-    // CRUD Pos Tabungan Dinamis
-    function addNewSavingGoal(e) {
+    async function addNewSavingGoal(e) {
       e.preventDefault();
       const name = document.getElementById('goal-name').value.trim();
       const target = parseInt(document.getElementById('goal-target').value) || 0;
-      
-      if(!name || target <= 0) return showToast('Isi data target dengan benar!', 'error');
-      
+      if(!name || target <= 0) return;
       state.savingGoals.push({ id: 's_' + Date.now(), name, target, current: 0 });
-      saveState(); showToast('Target Tabungan baru dibuat!'); render();
+      render(); await syncToCloud();
     }
 
-    function addSavingBalance(goalId) {
-      const amount = parseInt(prompt("Masukkan nominal jumlah uang yang ingin disetor (Rp):")) || 0;
+    async function addSavingBalance(goalId) {
+      const amount = parseInt(prompt("Masukkan nominal setor celengan (Rp):")) || 0;
       if(amount <= 0) return;
-      
       const idx = state.savingGoals.findIndex(g => g.id === goalId);
       if(idx !== -1) {
         state.savingGoals[idx].current += amount;
-        
-        // Buat log transaksi pengeluaran otomatis ke tabungan
         state.transactions.unshift({
           id: Date.now().toString(), date: new Date().toISOString().substring(0,10),
-          desc: `Setor Tabungan: ${state.savingGoals[idx].name}`, amount: amount, type: 'expense', category: 'Investasi', user: state.currentUser
+          desc: `Menabung: ${state.savingGoals[idx].name}`, amount: amount, type: 'expense', category: 'Lainnya', user: state.currentUser
         });
-        
-        saveState(); showToast('Setoran berhasil dimasukkan!'); render();
+        render(); await syncToCloud();
       }
     }
 
-    function deleteSavingGoal(id) {
-      if(confirm('Hapus pos celengan ini beserta progressnya?')) {
+    async function deleteSavingGoal(id) {
+      if(confirm('Hapus pos celengan ini?')) {
         state.savingGoals = state.savingGoals.filter(g => g.id !== id);
-        saveState(); showToast('Pos celengan dihapus', 'error'); render();
+        render(); await syncToCloud();
       }
     }
 
-    // Menambah Kategori Baru via Settings
-    function addNewCategory(type) {
+    async function addNewCategory(type) {
       const inputId = type === 'expense' ? 'new-exp-cat' : 'new-inc-cat';
       const val = document.getElementById(inputId).value.trim();
-      
-      if(!val) return showToast('Nama rincian kategori tidak boleh kosong', 'error');
-      
-      if(type === 'expense') {
-        if(!state.expenseCategories.includes(val)) state.expenseCategories.push(val);
-      } else {
-        if(!state.incomeCategories.includes(val)) state.incomeCategories.push(val);
-      }
-      
-      document.getElementById(inputId).value = '';
-      saveState(); showToast('Rincian Kategori ditambahkan!'); render();
+      if(!val) return;
+      if(type === 'expense') state.expenseCategories.push(val);
+      else state.incomeCategories.push(val);
+      render(); await syncToCloud();
     }
 
-    // ── MAIN LAYOUT RENDER ──
     function render() {
       const root = document.getElementById('app');
-      
       if(state.screen === 'auth') {
         root.innerHTML = `
-          <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-12 animate-fade-in">
-            <div class="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-[2.5rem] p-6 shadow-2xl text-center">
-              <div class="w-16 h-16 bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 rounded-3xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg shadow-purple-500/30">
-                <i class="ti ti-wallet text-3xl"></i>
-              </div>
-              <h2 class="text-2xl font-black bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">KitaFinance</h2>
-              <p class="text-xs text-gray-400 mt-1 mb-6 font-medium">Sistem Pembukuan Tim & Arus Kas Rock and Ross</p>
-              
+          <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-16">
+            <div class="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 text-center shadow-md">
+              <div class="w-16 h-16 bg-[#db2777] rounded-xl flex items-center justify-center text-white mx-auto mb-4"><i class="ti ti-wallet text-3xl"></i></div>
+              <h2 class="text-2xl font-black text-[#db2777]">KitaFinance</h2>
+              <p class="text-xs text-gray-400 mt-1 mb-6 font-medium">Sistem Cloud Terpusat Google Drive</p>
               <form onsubmit="handleLogin(event)" class="text-left space-y-4">
-                <div>
-                  <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Nama Anggota Pengguna</label>
-                  <input type="text" id="username-in" required placeholder="Ketik namamu, misal: Azman" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-2xl px-4 py-3.5 text-sm focus:outline-none focus:border-purple-500 font-medium">
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-bold py-3.5 rounded-2xl shadow-xl shadow-purple-500/20 text-sm">Masuk Dashboard Bersama →</button>
+                <div><label class="text-[10px] font-bold text-gray-400 block mb-1 uppercase">Nama Anggota Pengguna</label>
+                <input type="text" id="username-in" required placeholder="Contoh: Azman" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm font-semibold"></div>
+                <button type="submit" class="w-full bg-[#db2777] text-white font-bold py-3 rounded-xl text-sm shadow-md">Masuk & Muat Data →</button>
               </form>
             </div>
-          </div>
-        `;
+          </div>`;
         return;
       }
 
-      // Hitung finansial kumulatif harian
       const totalIn = state.transactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = state.transactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
 
       root.innerHTML = `
-        <header class="w-full bg-[var(--bg-card)] border-b border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
+        <header class="w-full bg-[var(--bg-card)] border-b border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-md"><i class="ti ti-bolt"></i></div>
-            <h1 class="font-black text-base tracking-tight">KitaFinance</h1>
+            <div class="w-8 h-8 bg-[#db2777] rounded-lg flex items-center justify-center text-white font-bold"><i class="ti ti-bolt"></i></div>
+            <h1 class="font-black text-sm">KitaFinance ${state.isLoading?'(Memuat...)':''}</h1>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border border-[var(--border)] rounded-full flex items-center justify-center text-lg shadow-sm">
-              <i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-500'}"></i>
-            </button>
+            <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border border-[var(--border)] rounded-full flex items-center justify-center text-lg"><i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-600'}"></i></button>
             <button onclick="state.screen='auth'; render();" class="w-9 h-9 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center text-lg"><i class="ti ti-logout"></i></button>
           </div>
         </header>
 
-        <main class="w-full px-4 pt-4 flex-1 pb-12">
-          ${renderTabContent(saldo, totalIn, totalOut)}
-        </main>
+        <main class="w-full px-4 pt-4 flex-1 pb-12">${renderTabContent(saldo, totalIn, totalOut)}</main>
 
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--bg-card)] border-t border-[var(--border)] flex justify-around items-center z-50 px-2 shadow-2xl rounded-t-[2rem]">
-          <button onclick="state.activeTab='dashboard'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='dashboard'?'text-purple-500':'text-gray-400'}"><i class="ti ti-smart-home text-xl mb-0.5"></i>Beranda</button>
-          <button onclick="state.activeTab='riwayat'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='riwayat'?'text-pink-500':'text-gray-400'}"><i class="ti ti-receipt text-xl mb-0.5"></i>Riwayat</button>
-          <button onclick="state.activeTab='tabungan'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='tabungan'?'text-emerald-500':'text-gray-400'}"><i class="ti ti-pig-money text-xl mb-0.5"></i>Tabungan</button>
-          <button onclick="state.activeTab='settings'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='settings'?'text-indigo-500':'text-gray-400'}"><i class="ti ti-adjustments-alt text-xl mb-0.5"></i>Pengaturan</button>
-        </nav>
-      `;
-      
-      if(state.activeTab === 'riwayat') {
-        updateFormCategories();
-      }
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--bg-card)] border-t border-[var(--border)] flex justify-around items-center z-50 px-2 rounded-t-3xl shadow-xl">
+          <button onclick="state.activeTab='dashboard'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='dashboard'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-smart-home text-xl mb-0.5"></i>Beranda</button>
+          <button onclick="state.activeTab='riwayat'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='riwayat'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-receipt text-xl mb-0.5"></i>Riwayat</button>
+          <button onclick="state.activeTab='tabungan'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='tabungan'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-pig-money text-xl mb-0.5"></i>Tabungan</button>
+          <button onclick="state.activeTab='settings'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='settings'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-settings text-xl mb-0.5"></i>Kategori</button>
+        </nav>`;
+      if(state.activeTab === 'riwayat') updateFormCategories();
     }
 
     function renderTabContent(saldo, totalIn, totalOut) {
-      // 1. TAB BERANDA / DASHBOARD (COLORFUL)
       if(state.activeTab === 'dashboard') {
         return `
-          <div class="bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-600/20 mb-5 relative overflow-hidden">
-            <div class="absolute right-[-20px] top-[-20px] w-32 height-32 bg-white/10 rounded-full blur-xl"></div>
-            <span class="text-xs font-semibold opacity-75 tracking-wide uppercase block">Sisa Saldo Bersama Kas</span>
-            <h2 class="text-3xl font-black my-1.5 tracking-tight">${formatIDR(saldo)}</h2>
-            
-            <div class="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-white/20">
-              <div class="bg-white/10 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-60 block">Pemasukan</span><span class="text-emerald-300 text-sm font-extrabold">+ ${formatIDR(totalIn)}</span></div>
-              <div class="bg-white/10 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-60 block">Pengeluaran</span><span class="text-rose-300 text-sm font-extrabold">- ${formatIDR(totalOut)}</span></div>
+          <div class="bg-[#db2777] rounded-3xl p-6 text-white shadow-md mb-4">
+            <span class="text-xs font-semibold opacity-90 block uppercase">Sisa Saldo Bersama Kas</span>
+            <h2 class="text-3xl font-black my-1">${formatIDR(saldo)}</h2>
+            <div class="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-white/20">
+              <div class="bg-black/20 p-3 rounded-xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pemasukan</span><span class="text-emerald-300 text-xs font-black">+ ${formatIDR(totalIn)}</span></div>
+              <div class="bg-black/20 p-3 rounded-xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pengeluaran</span><span class="text-rose-300 text-xs font-black">- ${formatIDR(totalOut)}</span></div>
             </div>
           </div>
-
-          <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-bolt text-amber-400"></i> Mutasi Arus Terkini</h3></div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 shadow-sm">
-            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada catatan pembukuan harian.</p>': state.transactions.slice(0,4).map(t => `
-              <div class="py-3.5 flex justify-between items-center text-xs">
-                <div><h4 class="font-bold text-sm tracking-tight">${t.desc}</h4><span class="text-[10px] font-medium text-gray-400">${t.category} • Oleh ${t.user}</span></div>
-                <span class="font-extrabold text-sm ${t.type==='income'?'text-emerald-500':'text-rose-500'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
-              </div>
-            `).join('')}
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="bg-[#2563eb] text-white p-3.5 rounded-xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Brand Operasional</span>Rock and Ross</div>
+            <div class="bg-[#7c3aed] text-white p-3.5 rounded-xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Database Cloud</span>Google Drive Connected</div>
           </div>
-        `;
+          <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-history text-pink-500"></i> Mutasi Arus Terkini</h3></div>
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)] px-4">
+            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi.</p>': state.transactions.slice(0,4).map(t => `
+              <div class="py-3 flex justify-between items-center text-xs">
+                <div><h4 class="font-bold">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category} • Oleh ${t.user}</span></div>
+                <span class="font-black ${t.type==='income'?'text-emerald-500':'text-rose-500'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
+              </div>`).join('')}
+          </div>`;
       }
 
-      // 2. TAB RIWAYAT (DENGAN SUB-TAB & FITUR EDIT/DELETE)
       if(state.activeTab === 'riwayat') {
         const isExp = state.subRiwayatTab === 'expense';
         const listData = state.transactions.filter(t => isExp ? t.type==='expense' : t.type==='income');
-        
         return `
-          <div class="w-full flex bg-[var(--bg-card)] border border-[var(--border)] p-1.5 rounded-2xl mb-4 shadow-inner">
-            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${isExp?'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg':'text-gray-400'}">📉 Daftar Pengeluaran</button>
-            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${!isExp?'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg':'text-gray-400'}">📈 Daftar Pemasukan</button>
+          <div class="w-full flex bg-[var(--bg-card)] border border-[var(--border)] p-1 rounded-xl mb-4">
+            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2 text-xs font-bold rounded-lg ${isExp?'bg-rose-600 text-white':'text-gray-400'}">📉 Pengeluaran</button>
+            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2 text-xs font-bold rounded-lg ${!isExp?'bg-emerald-600 text-white':'text-gray-400'}">📈 Pemasukan</button>
           </div>
-
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 mb-4 max-h-64 overflow-y-auto shadow-sm">
-            ${listData.length === 0 ? '<p class="text-center py-8 text-xs text-gray-500">Belum ada riwayat transaksi</p>' : listData.map(t => `
-              <div class="py-3.5 flex justify-between items-center text-xs">
-                <div><h4 class="font-bold text-sm">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category}</span></div>
-                <div class="flex items-center gap-2.5">
-                  <span class="font-black text-sm ${isExp?'text-rose-500':'text-emerald-500'}">${formatIDR(t.amount)}</span>
-                  <button onclick="openEdit('${t.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-edit"></i></button>
-                  <button onclick="deleteTx('${t.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)] px-4 mb-4 max-h-56 overflow-y-auto">
+            ${listData.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Kosong</p>' : listData.map(t => `
+              <div class="py-3 flex justify-between items-center text-xs">
+                <div><h4 class="font-bold">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category}</span></div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold ${isExp?'text-rose-500':'text-emerald-500'}">${formatIDR(t.amount)}</span>
+                  <button onclick="openEdit('${t.id}')" class="text-blue-400 text-sm p-1"><i class="ti ti-edit"></i></button>
+                  <button onclick="deleteTx('${t.id}')" class="text-rose-500 text-sm p-1"><i class="ti ti-trash"></i></button>
                 </div>
-              </div>
-            `).join('')}
+              </div>`).join('')}
           </div>
-
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-purple-500 mb-4">${state.editingTxId ? '⚙️ Update Data Rekap' : '✍️ Tambah Rekap Transaksi'}</h3>
-            <form onsubmit="saveTransaction(event)" class="space-y-4 text-xs">
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
+            <h3 class="text-xs font-bold uppercase text-[#db2777] mb-3">${state.editingTxId ? '⚙️ Perbarui Transaksi' : '✍ ... Catat Transaksi'}</h3>
+            <form onsubmit="saveTransaction(event)" class="space-y-3 text-xs">
               <input type="hidden" id="form-id">
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="block text-gray-400 font-semibold mb-1">Kas Arus</label>
-                  <select id="form-type" onchange="updateFormCategories()" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-purple-500"><option value="expense">Pengeluaran (-)</option><option value="income">Pemasukan (+)</option></select>
-                </div>
-                <div><label class="block text-gray-400 font-semibold mb-1">Pilih Kategori</label>
-                  <select id="form-cat" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-purple-500"></select>
-                </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><label class="block text-gray-400 mb-1">Jenis Kas</label>
+                  <select id="form-type" onchange="updateFormCategories()" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-semibold"><option value="expense">Pengeluaran (-)</option><option value="income">Pemasukan (+)</option></select></div>
+                <div><label class="block text-gray-400 mb-1">Kategori</label><select id="form-cat" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-semibold"></select></div>
               </div>
-              <div><label class="block text-gray-400 font-semibold mb-1">Keterangan / Deskripsi</label><input type="text" id="form-desc" required placeholder="Contoh: Belanja Bahan Baku Rock & Ross" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-purple-500"></div>
-              <div><label class="block text-gray-400 font-semibold mb-1">Nominal Angka (Rp)</label><input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-mono font-bold focus:outline-none focus:border-purple-500"></div>
-              <button type="submit" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/20 text-xs">Simpan Pencatatan</button>
+              <div><label class="block text-gray-400 mb-1">Keterangan</label><input type="text" id="form-desc" required placeholder="Detail pengeluaran..." class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs"></div>
+              <div><label class="block text-gray-400 mb-1">Nominal (Rp)</label><input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-bold"></div>
+              <button type="submit" class="w-full bg-[#db2777] text-white font-bold py-2.5 rounded-lg text-xs">Simpan Transaksi</button>
             </form>
-          </div>
-        `;
+          </div>`;
       }
 
-      // 3. TAB TABUNGAN MANDIRI (BISA DISUBMIT, DIHAPUS, DAN UPDATE BALANCE)
       if(state.activeTab === 'tabungan') {
         return `
-          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-emerald-500"></i> Pos Sinking Fund Aktif</h3></div>
-          
-          <div class="space-y-3 mb-6">
-            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border border-[var(--border)] py-6 text-xs rounded-2xl text-gray-500">Belum ada target pos tabungan bersama.</p>' : state.savingGoals.map(g => {
+          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-emerald-500"></i> Alokasi Tabungan Goals</h3></div>
+          <div class="space-y-3 mb-5">
+            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target</p>' : state.savingGoals.map(g => {
               const pct = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
               return `
-                <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm relative">
-                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14">
-                    <span class="text-sm font-bold tracking-tight">${g.name}</span>
-                    <span class="text-emerald-500 font-mono">${pct}%</span>
-                  </div>
-                  <div class="flex justify-between text-[10px] text-gray-400 mb-2">
-                    <span>Terkumpul: ${formatIDR(g.current)}</span>
-                    <span>Goals: ${formatIDR(g.target)}</span>
-                  </div>
-                  <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border border-[var(--border)]">
-                    <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: ${pct}%"></div>
-                  </div>
-                  
-                  <div class="absolute right-3 top-4 flex flex-col gap-1.5">
-                    <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-emerald-500 text-white rounded-lg flex items-center justify-center text-xs shadow-sm" title="Isi Celengan"><i class="ti ti-coin"></i></button>
-                    <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-xs" title="Hapus Pos"><i class="ti ti-trash"></i></button>
+                <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 relative shadow-sm">
+                  <div class="flex justify-between font-bold text-xs mb-1 pr-14"><span>${g.name}</span><span class="text-emerald-500">${pct}%</span></div>
+                  <div class="flex justify-between text-[10px] text-gray-400 mb-2"><span>Ada: ${formatIDR(g.current)}</span><span>Target: ${formatIDR(g.target)}</span></div>
+                  <div class="w-full bg-[var(--bg-body)] h-2 rounded-full overflow-hidden border border-[var(--border)]"><div class="h-full bg-emerald-500" style="width: ${pct}%"></div></div>
+                  <div class="absolute right-2.5 top-3.5 flex flex-col gap-1">
+                    <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-emerald-600 text-white rounded-md flex items-center justify-center text-xs"><i class="ti ti-coin"></i></button>
+                    <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-md flex items-center justify-center text-xs"><i class="ti ti-trash"></i></button>
                   </div>
                 </div>`;
             }).join('')}
           </div>
-
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-500 mb-3">🎯 Setup Goals Celengan Baru</h3>
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
+            <h3 class="text-xs font-bold uppercase text-emerald-500 mb-2">🎯 Set Target Celengan Baru</h3>
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
-              <div><label class="block text-gray-400 font-semibold mb-1">Nama Target Pengeluaran / Alokasi</label><input type="text" id="goal-name" required placeholder="Misal: 🏖️ Liburan Akhir Tahun" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3"></div>
-              <div><label class="block text-gray-400 font-semibold mb-1">Target Nominal Goals (Rp)</label><input type="number" id="goal-target" required placeholder="Contoh: 5000000" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 font-mono font-bold"></div>
-              <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-lg text-xs"><i class="ti ti-plus"></i> Launch Target Celengan</button>
+              <div><label class="block text-gray-400 mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs"></div>
+              <div><label class="block text-gray-400 mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-bold"></div>
+              <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-xs">Kunci Target</button>
             </form>
-          </div>
-        `;
+          </div>`;
       }
 
-      // 4. TAB SETTINGS (UNTUK MENAMBAH RINCIAN KATEGORI KAS DINAMIS)
       if(state.activeTab === 'settings') {
         return `
           <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-settings text-indigo-500"></i> Kustomisasi Kategori Finansial</h3></div>
-          
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 space-y-5 shadow-sm text-xs">
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 space-y-4 shadow-sm text-xs mb-4">
             <div>
-              <label class="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-1.5">Rincian Kategori Pengeluaran (Expense)</label>
-              <div class="flex gap-2 mb-3">
-                <input type="text" id="new-exp-cat" placeholder="Contoh: Kemasan Box" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-2.5">
-                <button onclick="addNewCategory('expense')" class="bg-purple-600 text-white font-bold px-4 rounded-xl">Add</button>
+              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pengeluaran (Expense)</label>
+              <div class="flex gap-2 mb-2">
+                <input type="text" id="new-exp-cat" placeholder="Contoh: Pembelian Cup" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2 text-xs">
+                <button onclick="addNewCategory('expense')" class="bg-[#db2777] text-white font-bold px-3 rounded-lg text-xs">Add</button>
               </div>
-              <div class="flex flex-wrap gap-1.5 bg-[var(--bg-body)] border border-[var(--border)] p-3 rounded-2xl">
-                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg font-medium text-[11px]">${c}</span>`).join('')}
-              </div>
-            </div>
-
-            <div class="border-t border-[var(--border)] pt-4">
-              <label class="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-1.5">Rincian Kategori Pemasukan (Income)</label>
-              <div class="flex gap-2 mb-3">
-                <input type="text" id="new-inc-cat" placeholder="Contoh: Royalti / Dividen" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-2.5">
-                <button onclick="addNewCategory('income')" class="bg-emerald-600 text-white font-bold px-4 rounded-xl">Add</button>
-              </div>
-              <div class="flex flex-wrap gap-1.5 bg-[var(--bg-body)] border border-[var(--border)] p-3 rounded-2xl">
-                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg font-medium text-[11px]">${c}</span>`).join('')}
+              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-xl">
+                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2 py-0.5 border border-[var(--border)] rounded text-[10px] font-medium">${c}</span>`).join('')}
               </div>
             </div>
-          </div>
-        `;
+            <div class="border-t border-[var(--border)] pt-3">
+              <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pemasukan (Income)</label>
+              <div class="flex gap-2 mb-2">
+                <input type="text" id="new-inc-cat" placeholder="Contoh: Sales Event" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2 text-xs">
+                <button onclick="addNewCategory('income')" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs">Add</button>
+              </div>
+              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-xl">
+                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2 py-0.5 border border-[var(--border)] rounded text-[10px] font-medium">${c}</span>`).join('')}
+              </div>
+            </div>
+          </div>`;
       }
     }
 
-    // Fungsi utilitas untuk update dropdown kategori form transaksi secara dinamis
     function updateFormCategories() {
       const typeSel = document.getElementById('form-type');
       const catSel = document.getElementById('form-cat');
       if(!typeSel || !catSel) return;
-
-      const currentType = typeSel.value;
-      const arr = currentType === 'expense' ? state.expenseCategories : state.incomeCategories;
-      
+      const arr = typeSel.value === 'expense' ? state.expenseCategories : state.incomeCategories;
       catSel.innerHTML = arr.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
