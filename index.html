@@ -51,7 +51,6 @@
   <div id="toast-container" class="fixed top-4 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2"></div>
 
   <script>
-    // URL Google Apps Script Anda untuk sinkronisasi cloud drive otomatis
     const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwPHL7Sq2brnR9EqTaG0AmkufZAdvouTJpCt70a0p7tjnUGsYmJSH_RxydWhP6ImSzgUA/exec";
 
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
@@ -72,8 +71,8 @@
       'Bahan Baku': 5000000, 'Operasional': 2000000, 'Lainnya': 1000000
     };
 
-    if(localStorage.getItem('kolabuku_state_v13')) {
-      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v13'));
+    if(localStorage.getItem('kolabuku_state_v14')) {
+      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v14'));
       state.transactions = saved.transactions || [];
       state.savingGoals = saved.savingGoals || [];
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
@@ -85,7 +84,7 @@
     document.documentElement.setAttribute('data-theme', state.theme);
 
     function saveState() {
-      localStorage.setItem('kolabuku_state_v13', JSON.stringify({
+      localStorage.setItem('kolabuku_state_v14', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
         expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories,
         showSavings: state.showSavings, theme: state.theme
@@ -237,7 +236,6 @@
       render(); await syncToCloud();
     }
 
-    // ── FITUR BARU: EDIT TARGET & GOALS TABUNGAN DINAMIS ──
     async function editSavingGoal(goalId) {
       const goal = state.savingGoals.find(g => g.id === goalId);
       if(!goal) return;
@@ -300,7 +298,8 @@
       }
 
       let recommendationHtml = "";
-      const totalSaving = state.transactions.filter(t => t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
+      // FIX FIXED LOGIC: Memastikan melacak murni pengeluaran dengan kategori Tabungan / Simpanan
+      const totalSaving = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
       const savingRate = totalIn > 0 ? (totalSaving / totalIn) * 100 : 0;
       if (totalOut > totalIn && totalIn > 0) {
         recommendationHtml = `⚠️ <b>Rekomendasi Bulanan:</b> Defisit anggaran terdeteksi! Segera rem pengeluaran non-pokok untuk minggu ini.`;
@@ -335,13 +334,13 @@
       const totalIn = timeFilteredTransactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = timeFilteredTransactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
       
-      // FIX SINKRONISASI INDIKATOR: Menghitung riil seluruh record dengan kategori 'Tabungan / Simpanan' secara presisi
-      const akumulasiTabunganRiil = state.transactions.filter(t => t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
+      // CRITICAL FIX: Akumulasi total tabungan HANYA membaca transaksi bertipe EXPENSE yang dialokasikan ke kategori 'Tabungan / Simpanan'
+      const akumulasiTabunganRiil = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
 
-      // Sinkronisasi otomatis progress bar goals tabungan berdasarkan nama keterangan transaksi
+      // Sinkronisasi dinamis bar progress target alokasi pos tabungan
       state.savingGoals.forEach(g => {
-        const matches = state.transactions.filter(t => t.desc.toLowerCase().includes(`menabung: ${g.name.toLowerCase()}`) || t.desc.toLowerCase() === g.name.toLowerCase());
+        const matches = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan' && t.desc.toLowerCase() === g.name.toLowerCase());
         g.current = matches.reduce((acc, curr) => acc + curr.amount, 0);
       });
 
@@ -429,7 +428,7 @@
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
-                <input type="text" id="form-desc" required placeholder="Tulis rincian deskripsi atau pos tabungan..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
+                <input type="text" id="form-desc" required placeholder="Contoh: Makan siang, atau nama target goals tabungan" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Nominal Angka (Rp)</label>
@@ -530,6 +529,7 @@
       const arr = state.subRiwayatTab === 'expense' ? state.expenseCategories : state.incomeCategories;
       
       let optionsHtml = arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      // Kunci Sinkronisasi Sistem: Membuka kategori Tabungan hanya di form Pengeluaran
       if(state.subRiwayatTab === 'expense') {
         optionsHtml += `<option value="Tabungan / Simpanan">💰 Tabungan / Simpanan</option>`;
       }
