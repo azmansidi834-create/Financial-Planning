@@ -2,581 +2,434 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aplikasi Pembukuan Finansial Bersama</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Keuangan Bersama - Mobile</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <style>
-    /* Base Variables (Default Light Mode - Colorful & Vibrant) */
-    :root {
-      --bg-body: #f4f7fe;
-      --bg-card: #ffffff;
-      --text-main: #1d1d42;
-      --text-muted: #7e7e9a;
-      --border-color: #e2e8f0;
-      
-      /* Vibrant Colors */
-      --primary: #6366f1;       /* Indigo */
-      --primary-light: #e0e7ff;
-      --secondary: #ec4899;     /* Pink */
-      --secondary-light: #fce7f3;
-      --success: #10b981;       /* Green */
-      --success-light: #d1fae5;
-      --warning: #f59e0b;       /* Amber */
-      --warning-light: #fef3c7;
-      --danger: #ef4444;        /* Red */
-      --danger-light: #fee2e2;
-      --info: #06b6d4;          /* Cyan */
-      --info-light: #ecfeff;
-      
-      --shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.1), 0 8px 10px -6px rgba(99, 102, 241, 0.1);
+    /* ── BASE & MOBILE RESET ── */
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
-
-    /* Dark Mode Theme overrides */
-    [data-theme="dark"] {
-      --bg-body: #0b0f19;
-      --bg-card: #151b2c;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --border-color: #222b45;
-      
-      --primary: #818cf8;
-      --primary-light: #1e2544;
-      --secondary: #f472b6;
-      --secondary-light: #371b2e;
-      --success: #34d399;
-      --success-light: #0d2d24;
-      --warning: #fbbf24;
-      --warning-light: #33250b;
-      --danger: #f87171;
-      --danger-light: #331417;
-      --info: #22d3ee;
-      --info-light: #082f37;
-      
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-    }
-
-    body {
-      background-color: var(--bg-body);
-      color: var(--text-main);
+    body { 
+      background: #0b0b14; 
+      color: #f3f4f6; 
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
-    /* Top Navigation bar */
+    :root {
+      --purple: #8b5cf6;
+      --purple-bg: #1e1b4b;
+      --green: #10b981;
+      --green-bg: #064e3b;
+      --red: #ef4444;
+      --red-bg: #7f1d1d;
+      --blue: #3b82f6;
+      --card-bg: #161624;
+      --border: #24243a;
+    }
+
+    /* ── HEADER FIXED ── */
     header {
-      background-color: var(--bg-card);
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
+      background: var(--card-bg);
+      padding: 16px;
+      position: fixed;
+      top: 0; width: 100%; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    
+    /* ── MAIN CONTAINER (SCROLLABLE MOBILE AREA) ── */
+    main {
+      flex: 1;
+      margin-top: 60px;
+      margin-bottom: 75px; /* Spacing agar tidak tertutup bottom nav */
+      padding: 16px;
+      width: 100%;
+      max-width: 480px; /* Batasan lebar agar tetap proporsional saat dibuka di PC */
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── BOTTOM NAVIGATION (ALA APLIKASI HP) ── */
+    .bottom-nav {
+      background: rgba(22, 22, 36, 0.95);
+      backdrop-filter: blur(10px);
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 65px;
+      display: flex; justify-content: space-around; align-items: center;
+      border-top: 1px solid var(--border);
       z-index: 100;
     }
-
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 700;
-      font-size: 1.25rem;
-      color: var(--primary);
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      color: #9ca3af; text-decoration: none; font-size: 0.65rem;
+      background: none; border: none; cursor: pointer; flex: 1; padding: 8px 0;
     }
+    .nav-item i { font-size: 1.4rem; margin-bottom: 4px; transition: 0.2s; }
+    .nav-item.active { color: var(--purple); }
+    .nav-item.active i { transform: translateY(-2px); }
 
-    .nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    /* Mode Switcher Button */
-    .theme-toggle {
-      background: var(--border-color);
-      border: none;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-main);
-      font-size: 1.25rem;
-    }
-    .theme-toggle:hover {
-      transform: scale(1.05);
-    }
-
-    /* Screen Layout constraints */
-    .container {
-      max-width: 1200px;
-      width: 100%;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      flex: 1;
-    }
-
-    /* Utility Cards styling */
+    /* ── UTILITY CARDS & UI ELEMENTS ── */
     .card {
-      background-color: var(--bg-card);
-      border-radius: 1.25rem;
-      padding: 2rem;
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow);
-      margin-bottom: 2rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px; margin-bottom: 16px;
+    }
+    .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;}
+    
+    /* Ringkasan Saldo */
+    .balance-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .balance-amount { font-size: 1.8rem; font-weight: 800; color: #fff; margin: 8px 0; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mini-stat { padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); }
+    .mini-stat.in { border-left: 4px solid var(--green); }
+    .mini-stat.out { border-left: 4px solid var(--red); }
+
+    /* ── TAB CONTENT TOGGLE ── */
+    .tab-content { display: none; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Authentication Screen specific */
-    .auth-box {
-      max-width: 450px;
-      margin: 4rem auto;
-      text-align: center;
+    /* Sub-tabs untuk Riwayat Pemasukan vs Pengeluaran */
+    .sub-tab-bar {
+      display: flex; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 4px; margin-bottom: 16px;
     }
-    .auth-box h2 { margin-bottom: 0.5rem; font-weight: 700; }
-    .auth-box p { color: var(--text-muted); margin-bottom: 2rem; }
+    .sub-tab {
+      flex: 1; text-align: center; padding: 8px; font-size: 0.85rem; font-weight: 600;
+      border-radius: 8px; color: #9ca3af; background: none; border: none; cursor: pointer;
+    }
+    .sub-tab.active { background: var(--border); color: #fff; }
 
+    /* List Item Modern */
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px; border-bottom: 1px solid var(--border);
+    }
+    .list-item:last-child { border-bottom: none; }
+    .item-info h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 2px; }
+    .item-info span { font-size: 0.75rem; color: #9ca3af; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .badge.in { background: var(--green-bg); color: #34d399; }
+    .badge.out { background: var(--red-bg); color: #f87171; }
+
+    /* Form Kontrol Mobile */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.8rem; color: #9ca3af; margin-bottom: 6px; }
+    input, select {
+      width: 100%; background: #0f0f1a; border: 1px solid var(--border);
+      padding: 12px; border-radius: 10px; color: #fff; font-size: 0.9rem; outline: none;
+    }
+    input:focus { border-color: var(--purple); }
+    
     .btn {
-      width: 100%;
-      padding: 0.85rem 1.5rem;
-      border-radius: 0.75rem;
-      border: none;
-      font-weight: 600;
-      font-size: 1rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
+      width: 100%; padding: 12px; background: var(--purple); color: #fff; border: none;
+      border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+      display: flex; justify-content: center; align-items: center; gap: 8px;
     }
-    .btn-primary { background-color: var(--primary); color: white; }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-secondary { background-color: var(--secondary); color: white; }
-    .btn-secondary:hover { opacity: 0.9; }
-    
-    .divider {
-      margin: 1.5rem 0;
-      display: flex;
-      align-items: center;
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
-    .divider::before, .divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--border-color);
-      margin: 0 1rem;
+    .btn-secondary { background: var(--border); color: #fff; }
+
+    /* Floating Action Button (FAB) untuk Tambah Transaksi Cepat */
+    .fab {
+      position: fixed; bottom: 80px; right: 20px;
+      width: 50px; height: 50px; border-radius: 25px;
+      background: var(--purple); color: #fff; border: none;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+      display: flex; justify-content: center; align-items: center; z-index: 99;
     }
 
-    .input-group {
-      margin-bottom: 1.25rem;
-      text-align: left;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      font-size: 0.875rem;
-    }
-    .input-group input, .input-group select {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border-radius: 0.75rem;
-      border: 1px solid var(--border-color);
-      background-color: var(--bg-body);
-      color: var(--text-main);
-      font-size: 1rem;
-    }
-
-    /* Dashboard Layout components */
-    .dashboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    /* Top Grid Stat Summary Boxes */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    .stat-card {
-      padding: 1.5rem;
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-    }
-
-    /* Colors variants inside dashboard items */
-    .c-primary { background-color: var(--primary-light); color: var(--primary); }
-    .c-success { background-color: var(--success-light); color: var(--success); }
-    .c-danger { background-color: var(--danger-light); color: var(--danger); }
-    .c-warning { background-color: var(--warning-light); color: var(--warning); }
-    .c-info { background-color: var(--info-light); color: var(--info); }
-
-    /* Main Table Container style */
-    .table-container {
-      overflow-x: auto;
-      margin-top: 1rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    th, td {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-    th {
-      font-weight: 600;
-      color: var(--text-muted);
-      background-color: var(--bg-body);
-    }
-    
-    .badge {
-      padding: 0.25rem 0.7rem;
-      border-radius: 2rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    /* Dynamic Action Floating Row */
-    .row-flex {
-      display: flex;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .col-6 { flex: 1; min-width: 300px; }
-
-    .hidden { display: none !important; }
+    /* Progress Bar Budgeting & Tabungan */
+    .progress-container { margin-top: 8px; }
+    .progress-bar-bg { background: #24243a; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px;}
+    .progress-bar-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 0.3s; }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="logo-container">
-      <i class="ti ti-wallet"></i> FinansialKita
-    </div>
-    <div class="nav-actions">
-      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Ganti Mode">
-        <i class="ti ti-moon"></i>
-      </button>
-      <button class="btn btn-secondary hidden" id="logoutBtn" onclick="logout()" style="width: auto; margin-bottom:0; padding: 0.5rem 1rem; font-size: 0.875rem;">
-        <i class="ti ti-logout"></i> Keluar
-      </button>
-    </div>
+    <h1>📋 Keuangan Bersama</h1>
+    <button class="nav-item" style="color:var(--red); padding:0; flex:none;" onclick="alert('Keluar Aplikasi')">
+      <i class="ti ti-logout"></i>
+    </button>
   </header>
 
-  <div class="container">
-    
-    <div id="authScreen" class="card auth-box">
-      <h2><i class="ti ti-device-laptop" style="color: var(--primary);"></i> Selamat Datang</h2>
-      <p>Kelola anggaran keuangan bersama tim atau pasangan Anda secara real-time.</p>
-      
-      <button class="btn btn-primary" onclick="simulateGoogleLogin()">
-        <i class="ti ti-brand-google"></i> Masuk dengan Google
-      </button>
+  <button class="fab" onclick="switchTab('riwayat'); window.scrollTo(0,document.body.scrollHeight);">
+    <i class="ti ti-plus" style="font-size: 1.5rem;"></i>
+  </button>
 
-      <div class="divider">atau masuk cepat</div>
+  <main>
 
-      <div class="input-group">
-        <label for="manualName">Nama Pengguna</label>
-        <input type="text" id="manualName" placeholder="Contoh: Azman Sidi">
+    <div id="dashboard" class="tab-content active">
+      <div class="card balance-card">
+        <span style="font-size: 0.8rem; color: #a78bfa;">Total Saldo Bersama</span>
+        <div class="balance-amount">Rp 8.450.000</div>
+        <div class="grid-2">
+          <div class="mini-stat in">
+            <span style="font-size: 0.7rem; color: #9ca3af;">Pemasukan (Bulan ini)</span>
+            <div style="font-weight: 700; color: var(--green); font-size: 0.95rem;">+Rp 12.000.000</div>
+          </div>
+          <div class="mini-stat out">
+            <span style="font-size: 0.7rem; color: #9ca3af;">Pengeluaran (Bulan ini)</span>
+            <div style="font-weight: 700; color: var(--red); font-size: 0.95rem;">-Rp 3.550.000</div>
+          </div>
+        </div>
       </div>
-      <button class="btn btn-secondary" onclick="loginManually()">
-        Mulai Pembukuan <i class="ti ti-arrow-right"></i>
-      </button>
+
+      <div class="section-title"><i class="ti ti-chart-pie" style="color:var(--purple)"></i> Sekilas Budget Bulan Ini</div>
+      <div class="card" style="padding: 12px;">
+        <div class="list-item">
+          <div class="item-info">
+            <h4>🍔 Makan & Minum</h4>
+            <span>Terpakai Rp 1.200.000 dari Rp 2.000.000</span>
+          </div>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 60%; background: var(--purple);"></div></div>
+      </div>
+
+      <div class="section-title"><i class="ti ti-pig" style="color:var(--green)"></i> Target Tabungan Terdekat</div>
+      <div class="card" style="padding: 12px;">
+        <div class="list-item">
+          <div class="item-info">
+            <h4>💻 Laptop Baru Kerja</h4>
+            <span>Terkumpul Rp 5.000.000 dari Rp 10.000.000</span>
+          </div>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 50%; background: var(--green);"></div></div>
+      </div>
     </div>
 
-    <div id="dashboardScreen" class="hidden">
-      
-      <div class="dashboard-header">
-        <div>
-          <h2 id="welcomeText">Halo, Pengguna! 👋</h2>
-          <p style="color: var(--text-muted);">Berikut adalah ringkasan kas keuangan bersama Anda hari ini.</p>
-        </div>
-        <div>
-          <span class="badge c-info" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i class="ti ti-users"></i> Grup Aktif
-          </span>
-        </div>
+
+    <div id="riwayat" class="tab-content">
+      <div class="sub-tab-bar">
+        <button class="sub-tab active" id="btn-sub-out" onclick="switchSubRiwayat('out')">📉 Pengeluaran</button>
+        <button class="sub-tab" id="btn-sub-in" onclick="switchSubRiwayat('in')">📈 Pemasukan</button>
       </div>
 
-      <div class="stats-grid">
-        <div class="card stat-card" style="margin-bottom:0;">
-          <div class="stat-icon c-info"><i class="ti ti-scale"></i></div>
-          <div>
-            <p style="color:var(--text-muted); font-size:0.875rem;">Saldo Utama</p>
-            <h3 id="statSaldo" style="font-weight:700; color: var(--info);">Rp0</h3>
+      <div id="riwayat-out-content">
+        <div class="section-title">Daftar Pengeluaran</div>
+        <div class="card" style="padding: 0 12px;">
+          <div class="list-item">
+            <div class="item-info">
+              <h4>Gofood Bubur Ayam & Kopi</h4>
+              <span>Hari ini • Oleh Azman</span>
+            </div>
+            <span class="badge out">-Rp 45.000</span>
           </div>
-        </div>
-        <div class="card stat-card" style="margin-bottom:0;">
-          <div class="stat-icon c-success"><i class="ti ti-trending-up"></i></div>
-          <div>
-            <p style="color:var(--text-muted); font-size:0.875rem;">Total Pemasukan</p>
-            <h3 id="statIncome" style="font-weight:700; color: var(--success);">Rp0</h3>
-          </div>
-        </div>
-        <div class="card stat-card" style="margin-bottom:0;">
-          <div class="stat-icon c-danger"><i class="ti ti-trending-down"></i></div>
-          <div>
-            <p style="color:var(--text-muted); font-size:0.875rem;">Total Pengeluaran</p>
-            <h3 id="statExpense" style="font-weight:700; color: var(--danger);">Rp0</h3>
-          </div>
-        </div>
-        <div class="card stat-card" style="margin-bottom:0;">
-          <div class="stat-icon c-warning"><i class="ti ti-piggy-bank"></i></div>
-          <div>
-            <p style="color:var(--text-muted); font-size:0.875rem;">Target Investasi</p>
-            <h3 style="font-weight:700; color: var(--warning);">Rp5.000.000</h3>
+          <div class="list-item">
+            <div class="item-info">
+              <h4>Bayar Listrik Bulanan</h4>
+              <span>15 Mei 2026 • Oleh Shely</span>
+            </div>
+            <span class="badge out">-Rp 350.000</span>
           </div>
         </div>
       </div>
 
-      <div class="row-flex">
-        
-        <div class="col-6">
-          <div class="card">
-            <h3 style="margin-bottom: 1.5rem;"><i class="ti ti-plus" style="color: var(--primary);"></i> Tambah Transaksi</h3>
-            
-            <div class="input-group">
-              <label>Nama Transaksi</label>
-              <input type="text" id="txName" placeholder="Contoh: Gaji bulanan, Beli kopi">
+      <div id="riwayat-in-content" style="display: none;">
+        <div class="section-title">Daftar Pemasukan</div>
+        <div class="card" style="padding: 0 12px;">
+          <div class="list-item">
+            <div class="item-info">
+              <h4>Gaji Bulanan Utama</h4>
+              <span>01 Mei 2026 • Transfer</span>
             </div>
-
-            <div class="input-group">
-              <label>Jumlah (Rupiah)</label>
-              <input type="number" id="txAmount" placeholder="Maksimal nominal tanpa titik">
+            <span class="badge in">+Rp 9.500.000</span>
+          </div>
+          <div class="list-item">
+            <div class="item-info">
+              <h4>Project Freelance WebGIS</h4>
+              <span>10 Mei 2026 • UrsMap</span>
             </div>
-
-            <div class="input-group">
-              <label>Jenis Kas</label>
-              <select id="txType">
-                <option value="income">Pemasukan (+)</option>
-                <option value="expense">Pengeluaran (-)</option>
-              </select>
-            </div>
-
-            <div class="input-group">
-              <label>Kategori</label>
-              <select id="txCategory">
-                <option value="Gaji">Gaji / Omset</option>
-                <option value="Makanan">Makan & Minum</option>
-                <option value="Belanja">Belanja Bulanan</option>
-                <option value="Transportasi">Transportasi</option>
-                <option value="Investasi">Investasi / Tabungan</option>
-              </select>
-            </div>
-
-            <button class="btn btn-primary" onclick="addTransaction()" style="margin-bottom:0;">
-              <i class="ti ti-device-floppy"></i> Catat Transaksi
-            </button>
+            <span class="badge in">+Rp 2.500.000</span>
           </div>
         </div>
-
-        <div class="col-6">
-          <div class="card" style="height: 100%; min-height: 420px;">
-            <h3><i class="ti ti-history" style="color: var(--secondary);"></i> Riwayat Transaksi Terbaru</h3>
-            
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Transaksi</th>
-                    <th>Kategori</th>
-                    <th>Nominal</th>
-                  </tr>
-                </thead>
-                <tbody id="transactionTableBody">
-                  </tbody>
-              </table>
-            </div>
-            
-            <div id="emptyState" style="text-align: center; color: var(--text-muted); padding: 3rem 0;">
-              <i class="ti ti-database-off" style="font-size: 2.5rem; margin-bottom: 0.5rem; display:block;"></i>
-              Belum ada pencatatan keuangan masuk.
-            </div>
-          </div>
-        </div>
-
       </div>
 
+      <div class="section-title" style="margin-top: 24px;"><i class="ti ti-edit"></i> Catat Transaksi Baru</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Jenis Transaksi</label>
+          <select id="tx-type" onchange="adjustFormCategory()">
+            <option value="out">📉 Pengeluaran</option>
+            <option value="in">📈 Pemasukan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nominal (Rp)</label>
+          <input type="number" placeholder="Contoh: 50000" id="tx-amount">
+        </div>
+        <div class="form-group">
+          <label>Keterangan / Catatan</label>
+          <input type="text" placeholder="Beli Makan siang / Bonus project">
+        </div>
+        <button class="btn" onclick="alert('Berhasil disimpan!')"><i class="ti ti-device-floppy"></i> Simpan Transaksi</button>
+      </div>
     </div>
-  </div>
+
+
+    <div id="budgeting" class="tab-content">
+      <div class="section-title"><i class="ti ti-adjustments"></i> Alokasi Budget Bulanan</div>
+      <p style="font-size: 0.8rem; color:#9ca3af; margin-bottom: 16px;">Batasi pengeluaran bulanan bersamamu agar tidak boncos.</p>
+      
+      <div class="card" style="padding: 12px;">
+        <div style="margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>🍔 Makan & Minum</strong>
+            <span>Limit: Rp 2.000.000</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 60%; background: var(--purple);"></div></div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>🚗 Transportasi & Bensin</strong>
+            <span>Limit: Rp 800.000</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 25%; background: var(--purple);"></div></div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>🛒 Belanja Bulanan</strong>
+            <span>Limit: Rp 1.500.000</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 85%; background: var(--red);"></div></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="ti ti-plus"></i> Atur Limit Kategori Baru</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Pilih Kategori Pengeluaran</label>
+          <select>
+            <option>Makan & Minum</option>
+            <option>Transportasi</option>
+            <option>Belanja Bulanan</option>
+            <option>Hiburan/Self Reward</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Batas Limit Bulanan (Rp)</label>
+          <input type="number" placeholder="Alokasikan jumlah dana">
+        </div>
+        <button class="btn" style="background: var(--purple);"><i class="ti ti-check"></i> Terapkan Alokasi</button>
+      </div>
+    </div>
+
+
+    <div id="tabungan" class="tab-content">
+      <div class="section-title"><i class="ti ti-target"></i> Target Tabungan / Sinking Fund</div>
+      <p style="font-size: 0.8rem; color:#9ca3af; margin-bottom: 16px;">Pantau goals finansial bersama secara berkala.</p>
+
+      <div class="card" style="padding: 12px; margin-bottom: 16px;">
+        <div style="margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>💻 Laptop Baru</strong>
+            <span>Rp 5.000.000 / Rp 10.000.000</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 50%; background: var(--green);"></div></div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>🏖️ Liburan Akhir Tahun</strong>
+            <span>Rp 1.200.000 / Rp 4.000.000</span>
+          </div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 30%; background: var(--green);"></div></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="ti ti-coin"></i> Setor/Simpan Dana ke Tabungan</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Pilih Pos Tabungan</label>
+          <select>
+            <option>💻 Laptop Baru</option>
+            <option>🏖️ Liburan Akhir Tahun</option>
+            <option>💰 Dana Darurat Utama</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah Setoran Dana (Rp)</label>
+          <input type="number" placeholder="Jumlah uang yang disisihkan">
+        </div>
+        <button class="btn" style="background: var(--green);"><i class="ti ti-arrow-up-right"></i> Pindahkan ke Celengan</button>
+      </div>
+    </div>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+      <i class="ti ti-smart-home"></i>Dashboard
+    </button>
+    <button class="nav-item" id="nav-riwayat" onclick="switchTab('riwayat')">
+      <i class="ti ti-receipt"></i>Riwayat
+    </button>
+    <button class="nav-item" id="nav-budgeting" onclick="switchTab('budgeting')">
+      <i class="ti ti-chart-donut"></i>Budgeting
+    </button>
+    <button class="nav-item" id="nav-tabungan" onclick="switchTab('tabungan')">
+      <i class="ti ti-pig-money"></i>Tabungan
+    </button>
+  </nav>
 
   <script>
-    // App State Management
-    let state = {
-      user: null,
-      theme: 'light',
-      transactions: []
-    };
-
-    // Dark & Light Mode core function
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      let targetTheme = 'light';
-      
-      if (currentTheme !== 'dark') {
-        targetTheme = 'dark';
-      }
-      
-      document.documentElement.setAttribute('data-theme', targetTheme);
-      state.theme = targetTheme;
-      
-      // Ubah ikon tombol sesuai mode aktif
-      const btnIcon = document.getElementById('themeBtn');
-      if (targetTheme === 'dark') {
-        btnIcon.innerHTML = '<i class="ti ti-sun"></i>';
-      } else {
-        btnIcon.innerHTML = '<i class="ti ti-moon"></i>';
-      }
-    }
-
-    // Login Simulators
-    function simulateGoogleLogin() {
-      enterDashboard("Azman Sidi Habibie (Google)");
-    }
-
-    function loginManually() {
-      const nameInput = document.getElementById('manualName').value.trim();
-      if(!nameInput) {
-        alert("Silakan masukkan nama Anda terlebih dahulu!");
-        return;
-      }
-      enterDashboard(nameInput);
-    }
-
-    function enterDashboard(username) {
-      state.user = username;
-      document.getElementById('welcomeText').innerText = `Halo, ${username}! 👋`;
-      
-      // Switch screen classes
-      document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('dashboardScreen').classList.remove('hidden');
-      document.getElementById('logoutBtn').classList.remove('hidden');
-      
-      updateCalculations();
-    }
-
-    function logout() {
-      state.user = null;
-      state.transactions = [];
-      document.getElementById('manualName').value = "";
-      
-      document.getElementById('authScreen').classList.remove('hidden');
-      document.getElementById('dashboardScreen').classList.add('hidden');
-      document.getElementById('logoutBtn').classList.add('hidden');
-    }
-
-    // Business Logics: Add Transaction Record
-    function addTransaction() {
-      const name = document.getElementById('txName').value.trim();
-      const amount = parseFloat(document.getElementById('txAmount').value);
-      const type = document.getElementById('txType').value;
-      const category = document.getElementById('txCategory').value;
-
-      if (!name || isNaN(amount) || amount <= 0) {
-        alert("Mohon isi nama transaksi dan nominal yang valid!");
-        return;
-      }
-
-      const newTx = { name, amount, type, category };
-      state.transactions.unshift(newTx); // letakan paling atas
-
-      // Reset form fields
-      document.getElementById('txName').value = "";
-      document.getElementById('txAmount').value = "";
-
-      // Re-render UI
-      renderTransactions();
-      updateCalculations();
-    }
-
-    function updateCalculations() {
-      let income = 0;
-      let expense = 0;
-
-      state.transactions.forEach(t => {
-        if(t.type === 'income') income += t.amount;
-        else expense += t.amount;
+    // Fungsi Manajemen Tab Navigasi Utama
+    function switchTab(tabId) {
+      // Sembunyikan semua tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      // Nonaktifkan status aktif pada semua tombol navigasi bawah
+      document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
+        btn.classList.remove('active');
       });
 
-      let saldo = income - expense;
-
-      // Update values in UI
-      document.getElementById('statSaldo').innerText = formatIDR(saldo);
-      document.getElementById('statIncome').innerText = formatIDR(income);
-      document.getElementById('statExpense').innerText = formatIDR(expense);
-    }
-
-    function renderTransactions() {
-      const tbody = document.getElementById('transactionTableBody');
-      const emptyState = document.getElementById('emptyState');
+      // Tampilkan tab terpilih & aktifkan tombolnya
+      document.getElementById(tabId).classList.add('active');
+      document.getElementById('nav-' + tabId).classList.add('active');
       
-      tbody.innerHTML = "";
+      // Gulir otomatis kembali ke atas ketika berganti tab demi kenyamanan mobile
+      window.scrollTo(0, 0);
+    }
 
-      if(state.transactions.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
+    // Fungsi Tukar Sub-Riwayat (Pengeluaran vs Pemasukan)
+    function switchSubRiwayat(type) {
+      const btnOut = document.getElementById('btn-sub-out');
+      const btnIn = document.getElementById('btn-sub-in');
+      const contentOut = document.getElementById('add-out-content' || 'riwayat-out-content');
+      const contentIn = document.getElementById('riwayat-in-content');
+
+      if (type === 'out') {
+        btnOut.classList.add('active');
+        btnIn.classList.remove('active');
+        document.getElementById('riwayat-out-content').style.display = 'block';
+        document.getElementById('riwayat-in-content').style.display = 'none';
       } else {
-        emptyState.classList.add('hidden');
+        btnIn.classList.add('active');
+        btnOut.classList.remove('active');
+        document.getElementById('riwayat-out-content').style.display = 'none';
+        document.getElementById('riwayat-in-content').style.display = 'block';
       }
-
-      state.transactions.forEach(t => {
-        const tr = document.createElement('tr');
-        
-        const isInc = t.type === 'income';
-        const badgeClass = isInc ? 'c-success' : 'c-danger';
-        const txtColor = isInc ? 'var(--success)' : 'var(--danger)';
-        const prefix = isInc ? '+' : '-';
-
-        tr.innerHTML = `
-          <td style="font-weight: 500;">${escapeHTML(t.name)}</td>
-          <td><span class="badge c-primary">${t.category}</span></td>
-          <td style="font-weight: 600; color: ${txtColor};">${prefix} ${formatIDR(t.amount)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
 
-    // Helper utilities
-    function formatIDR(num) {
-      return 'Rp ' + num.toLocaleString('id-ID');
-    }
-
-    function escapeHTML(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Penyesuaian otomatis form dropdown sesuai jenis transaksi
+    function adjustFormCategory() {
+      const type = document.getElementById('tx-type').value;
+      // Di sini nanti bisa ditambahkan logika untuk mengubah isi opsi kategori otomatis
     }
   </script>
 </body>
