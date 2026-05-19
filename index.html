@@ -51,6 +51,7 @@
   <div id="toast-container" class="fixed top-4 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2"></div>
 
   <script>
+    // URL Cloud Database dari Google Apps Script Anda (Tetap Dipertahankan)
     const CLOUD_URL = "PASTE_URL_APPS_SCRIPT_DI_SINI";
 
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
@@ -58,12 +59,11 @@
 
     let state = {
       screen: 'auth', theme: 'dark', activeTab: 'dashboard', subRiwayatTab: 'expense',
-      timeFilter: 'month', // week | month | year
+      timeFilter: 'month', showSavings: true,
       currentUser: null, editingTxId: null, isLoading: false,
       expenseCategories: [...DEFAULT_EXP_CATS],
       incomeCategories: [...DEFAULT_INC_CATS],
-      savingGoals: [],
-      transactions: []
+      savingGoals: []
     };
 
     const BUDGET_LIMITS = {
@@ -71,18 +71,20 @@
       'Bahan Baku': 5000000, 'Operasional': 2000000, 'Lainnya': 1000000
     };
 
-    if(localStorage.getItem('kolabuku_state_v9')) {
-      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v9'));
-      state.transactions = saved.transactions || state.transactions;
-      state.savingGoals = saved.savingGoals || state.savingGoals;
+    if(localStorage.getItem('kolabuku_state_v10')) {
+      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v10'));
+      state.transactions = saved.transactions || [];
+      state.savingGoals = saved.savingGoals || [];
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
       state.incomeCategories = saved.incomeCategories || state.incomeCategories;
+      state.showSavings = saved.showSavings !== undefined ? saved.showSavings : true;
     }
 
     function saveState() {
-      localStorage.setItem('kolabuku_state_v9', JSON.stringify({
+      localStorage.setItem('kolabuku_state_v10', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
-        expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories
+        expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories,
+        showSavings: state.showSavings
       }));
     }
 
@@ -125,7 +127,12 @@
       return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
     }
 
-    // FILTER WAKTU UTK RIWAYAT DATA (MINGGU / BULAN / TAHUN)
+    function toggleSavingsVisibility() {
+      state.showSavings = !state.showSavings;
+      saveState();
+      render();
+    }
+
     function filterTransactionsByTime(txList) {
       const now = new Date();
       return txList.filter(t => {
@@ -136,7 +143,6 @@
         } else if (state.timeFilter === 'year') {
           return tDate.getFullYear() === now.getFullYear();
         } else {
-          // Default Month
           return tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear();
         }
       });
@@ -226,17 +232,11 @@
       render(); await syncToCloud();
     }
 
-    async function addSavingBalance(goalId) {
-      const amount = parseInt(prompt("Masukkan nominal setor celengan (Rp):")) || 0;
-      if(amount <= 0) return;
-      const idx = state.savingGoals.findIndex(g => g.id === goalId);
+    async function addSavingBalanceFromHistory(amount, goalName) {
+      const idx = state.savingGoals.findIndex(g => g.name === goalName);
       if(idx !== -1) {
         state.savingGoals[idx].current += amount;
-        state.transactions.unshift({
-          id: Date.now().toString(), date: new Date().toISOString().substring(0,10),
-          desc: `Menabung: ${state.savingGoals[idx].name}`, amount: amount, type: 'expense', category: 'Lainnya', user: state.currentUser
-        });
-        render(); await syncToCloud();
+        saveState();
       }
     }
 
@@ -284,7 +284,8 @@
       }
 
       let recommendationHtml = "";
-      const savingRate = totalIn > 0 ? (state.savingGoals.reduce((a,b)=>a+b.current, 0) / totalIn) * 100 : 0;
+      const totalSaving = state.transactions.filter(t => t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
+      const savingRate = totalIn > 0 ? (totalSaving / totalIn) * 100 : 0;
       if (totalOut > totalIn && totalIn > 0) {
         recommendationHtml = `⚠️ <b>Rekomendasi Bulanan:</b> Defisit anggaran terdeteksi! Segera rem pengeluaran non-pokok untuk minggu ini.`;
       } else if (savingRate < 15 && totalIn > 0) {
@@ -314,7 +315,6 @@
         return;
       }
 
-      // Hitung total finansial kumulatif sesuai cakupan filter waktu saat ini
       const timeFilteredTransactions = filterTransactionsByTime(state.transactions);
       const totalIn = timeFilteredTransactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = timeFilteredTransactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
@@ -343,6 +343,9 @@
     function renderTabContent(saldo, totalIn, totalOut, timeFilteredTransactions) {
       if(state.activeTab === 'dashboard') {
         const smartAnalysis = generateSmartAnalysis(totalIn, totalOut);
+        
+        // Menghitung akumulasi seluruh tabungan khusus di beranda
+        const akumulasiTabungan = state.transactions.filter(t => t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
 
         return `
           <div class="bg-[var(--pink-primary)] rounded-[2rem] p-6 text-white shadow-xl mb-4 border-b-4 border-black/20">
@@ -352,6 +355,16 @@
               <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-80 block">Total Masuk</span><span class="text-emerald-300 text-sm font-black">+ ${formatIDR(totalIn)}</span></div>
               <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-80 block">Total Keluar</span><span class="text-rose-300 text-sm font-black">- ${formatIDR(totalOut)}</span></div>
             </div>
+          </div>
+
+          <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-5 text-white shadow-lg border-b-4 border-black/15 flex items-center justify-between mb-4">
+            <div>
+              <span class="text-[10px] block opacity-80 font-bold uppercase tracking-wider mb-1">Total Tabungan Bersama</span>
+              <h3 class="text-xl font-black tracking-tight">${state.showSavings ? formatIDR(akumulasiTabungan) : '•••••••'}</h3>
+            </div>
+            <button onclick="toggleSavingsVisibility()" class="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-lg">
+              <i class="ti ${state.showSavings ? 'ti-eye' : 'ti-eye-off'}"></i>
+            </button>
           </div>
           
           <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-brain text-[var(--pink-primary)]"></i> Evaluasi & Analisis Cerdas</h3></div>
@@ -407,8 +420,8 @@
           </div>
 
           <div class="w-full flex bg-[var(--bg-card)] border-2 border-[var(--border)] p-1.5 rounded-2xl mb-3 shadow-sm">
-            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${isExp?'bg-[var(--red-out)] text-white shadow-md':'text-gray-400'}">📉 Pengeluaran</button>
-            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${!isExp?'bg-[var(--green-in)] text-white shadow-md':'text-gray-400'}">📈 Pemasukan</button>
+            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${isExp?'bg-[var(--red-out)] text-white shadow-md':'text-gray-400'}">  Pengeluaran</button>
+            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-extrabold rounded-xl ${!isExp?'bg-[var(--green-in)] text-white shadow-md':'text-gray-400'}">  Pemasukan</button>
           </div>
 
           <div class="w-full flex bg-[var(--bg-card)] border-2 border-[var(--border)] p-1 rounded-xl mb-4 gap-1">
@@ -435,18 +448,18 @@
 
       if(state.activeTab === 'tabungan') {
         return `
-          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-[var(--green-in)]"></i> Alokasi Tabungan Goals</h3></div>
+          <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-[var(--green-in)]"></i> Target Alokasi Sinking Fund</h3></div>
           <div class="space-y-3 mb-5">
             ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border-2 border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target pos tabungan bersama.</p>' : state.savingGoals.map(g => {
               const pct = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
               return `
                 <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-2xl p-4 relative shadow-md">
-                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span class="text-sm tracking-tight font-bold">${g.name}</span><span class="text-[var(--green-in)] font-mono font-black">${pct}%</span></div>
+                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span>${g.name}</span><span class="text-emerald-500 font-mono font-black">${pct}%</span></div>
                   <div class="flex justify-between text-[10px] text-gray-400 mb-2"><span>Ada: ${formatIDR(g.current)}</span><span>Target: ${formatIDR(g.target)}</span></div>
                   <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border-2 border-[var(--border)]"><div class="h-full bg-[var(--green-in)] rounded-full" style="width: ${pct}%"></div></div>
-                  <div class="absolute right-2.5 top-3.5 flex flex-col gap-1">
-                    <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-[var(--green-in)] text-white rounded-md flex items-center justify-center text-xs shadow-sm"><i class="ti ti-coin"></i></button>
-                    <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-md flex items-center justify-center text-xs"><i class="ti ti-trash"></i></button>
+                  
+                  <div class="absolute right-2.5 top-5 flex items-center justify-center">
+                    <button onclick="deleteSavingGoal('${g.id}')" class="w-8 h-8 bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
                   </div>
                 </div>`;
             }).join('')}
@@ -456,7 +469,7 @@
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
               <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
               <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
-              <button type="submit" class="w-full bg-[var(--green-in)] text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">Kunci Target</button>
+              <button type="submit" class="w-full bg-[var(--green-in)] text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">Kunci Target Baru</button>
             </form>
           </div>`;
       }
@@ -492,7 +505,13 @@
     function updateFormCategories() {
       const catSel = document.getElementById('form-cat'); if(!catSel) return;
       const arr = state.subRiwayatTab === 'expense' ? state.expenseCategories : state.incomeCategories;
-      catSel.innerHTML = arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      
+      // Jika di tab pemasukan, pastikan opsi "Tabungan / Simpanan" masuk agar bisa menyetor dana dari riwayat
+      let optionsHtml = arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      if(state.subRiwayatTab === 'income' && !state.incomeCategories.includes("Tabungan / Simpanan")) {
+        optionsHtml += `<option value="Tabungan / Simpanan">💰 Setor ke Tabungan / Simpanan</option>`;
+      }
+      catSel.innerHTML = optionsHtml;
     }
 
     render();
