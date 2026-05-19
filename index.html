@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KolaBuku - Pendamping Finansial Bersama</title>
+  <title>kolabuku - Pendamping Finansial Bersama</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <script>
@@ -16,24 +16,23 @@
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     
-    /* PALET WARNA LIGHT MODE SUPER COLORFUL DENGAN BACKGROUND CARD PUTIH PADAT & AKSEN PINK TEGAS */
     html[data-theme="light"] {
-      --bg-body: #f0f4ff;          /* Biru pastel muda segar */
-      --bg-card: #ffffff;          /* Putih bersih */
-      --text-main: #0f172a;        /* Navy gelap */
-      --border: #cbd5e1;           /* Garis pembatas terang */
-      --nav-bg: #e0e7ff;           /* Latar navigasi indigo muda solid */
+      --bg-body: #f0f4ff;          
+      --bg-card: #ffffff;          
+      --text-main: #0f172a;        
+      --border: #cbd5e1;           
+      --nav-bg: #e0e7ff;           
       
-      --pink-primary: #ff4a8b;     /* Sweet Bubblegum Pink */
-      --green-in: #10b981;         /* Hijau Mint cerah */
-      --red-out: #f43f5e;          /* Merah Coral berani */
+      --pink-primary: #ff4a8b;     
+      --green-in: #10b981;         
+      --red-out: #f43f5e;          
     }
     html[data-theme="dark"] {
-      --bg-body: #0b0c13;          /* Hitam obsidian */
-      --bg-card: #161825;          /* Card navy gelap gulita */
-      --text-main: #f8fafc;        /* Putih terang */
-      --border: #25283d;           /* Garis pembatas gelap */
-      --nav-bg: #1c1e30;           /* Navigasi gelap kontras */
+      --bg-body: #0b0c13;          
+      --bg-card: #161825;          
+      --text-main: #f8fafc;        
+      --border: #25283d;           
+      --nav-bg: #1c1e30;           
       
       --pink-primary: #ff4a8b;
       --green-in: #10b981;
@@ -52,16 +51,14 @@
   <div id="toast-container" class="fixed top-4 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2"></div>
 
   <script>
-    // URL Google Apps Script Resmi Anda Berhasil Terpasang Aman
+    // URL Google Apps Script Anda untuk sinkronisasi cloud drive otomatis
     const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwPHL7Sq2brnR9EqTaG0AmkufZAdvouTJpCt70a0p7tjnUGsYmJSH_RxydWhP6ImSzgUA/exec";
 
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
     const DEFAULT_INC_CATS = ['Omset Penjualan', 'Gaji Pokok', 'Freelance Proyek', 'Investasi'];
 
     let state = {
-      screen: 'auth', 
-      theme: 'light', // WEB PERTAMA KALI DIBUKA OTOMATIS BERADA DI LIGHT MODE COLORFUL
-      activeTab: 'dashboard', subRiwayatTab: 'expense',
+      screen: 'auth', theme: 'light', activeTab: 'dashboard', subRiwayatTab: 'expense',
       timeFilter: 'month', showSavings: true,
       currentUser: null, editingTxId: null, isLoading: false,
       expenseCategories: [...DEFAULT_EXP_CATS],
@@ -75,8 +72,8 @@
       'Bahan Baku': 5000000, 'Operasional': 2000000, 'Lainnya': 1000000
     };
 
-    if(localStorage.getItem('kolabuku_state_v12')) {
-      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v12'));
+    if(localStorage.getItem('kolabuku_state_v13')) {
+      const saved = JSON.parse(localStorage.getItem('kolabuku_state_v13'));
       state.transactions = saved.transactions || [];
       state.savingGoals = saved.savingGoals || [];
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
@@ -85,11 +82,10 @@
       state.theme = saved.theme || 'light';
     }
 
-    // Set manifest tema dasar HTML
     document.documentElement.setAttribute('data-theme', state.theme);
 
     function saveState() {
-      localStorage.setItem('kolabuku_state_v12', JSON.stringify({
+      localStorage.setItem('kolabuku_state_v13', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
         expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories,
         showSavings: state.showSavings, theme: state.theme
@@ -98,7 +94,7 @@
 
     async function syncToCloud() {
       saveState();
-      if(!CLOUD_URL) return;
+      if(!CLOUD_URL || CLOUD_URL.includes("PASTE_URL")) return;
       try {
         await fetch(CLOUD_URL, {
           method: 'POST',
@@ -106,12 +102,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: "save", state: state })
         });
-        showToast('☁️ Cloud Drive Sinkron!');
+        showToast('☁️ Cloud Sinkron Otomatis!');
       } catch(e) { console.error(e); }
     }
 
     async function loadFromCloud() {
-      if(!CLOUD_URL) return;
+      if(!CLOUD_URL || CLOUD_URL.includes("PASTE_URL")) return;
       state.isLoading = true; render();
       try {
         const res = await fetch(CLOUD_URL);
@@ -122,7 +118,7 @@
           state.expenseCategories = cloudData.expenseCategories || state.expenseCategories;
           state.incomeCategories = cloudData.incomeCategories || state.incomeCategories;
           saveState();
-          showToast('📥 Data Cloud Berhasil Dimuat!');
+          showToast('📥 Data Cloud Dimuat!');
         }
       } catch(e) { console.error(e); }
       state.isLoading = false; render();
@@ -241,6 +237,25 @@
       render(); await syncToCloud();
     }
 
+    // ── FITUR BARU: EDIT TARGET & GOALS TABUNGAN DINAMIS ──
+    async function editSavingGoal(goalId) {
+      const goal = state.savingGoals.find(g => g.id === goalId);
+      if(!goal) return;
+
+      const newName = prompt("Ubah Nama Target Tabungan:", goal.name);
+      if(newName === null || !newName.trim()) return;
+
+      const newTarget = parseInt(prompt("Ubah Target Nominal Anggaran Goals (Rp):", goal.target));
+      if(isNaN(newTarget) || newTarget <= 0) return showToast('Nominal target tidak valid!', 'error');
+
+      goal.name = newName.trim();
+      goal.target = newTarget;
+
+      showToast('🎯 Target Goals berhasil diperbarui!');
+      render();
+      await syncToCloud();
+    }
+
     async function deleteSavingGoal(id) {
       if(confirm('Hapus pos celengan ini?')) {
         state.savingGoals = state.savingGoals.filter(g => g.id !== id);
@@ -302,9 +317,9 @@
       const root = document.getElementById('app');
       if(state.screen === 'auth') {
         root.innerHTML = `
-          <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-16">
+          <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-16 animate-fade-in">
             <div class="w-full bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-[2.5rem] p-6 text-center shadow-xl">
-              <h2 class="text-3xl font-black text-[var(--pink-primary)] tracking-tight mb-2">KolaBuku</h2>
+              <h2 class="text-3xl font-black text-[var(--pink-primary)] tracking-tight mb-2 lowercase">kolabuku</h2>
               <p class="text-xs text-gray-400 mb-6 font-medium">Sistem Cloud Pencatatan Finansial Bersama</p>
               <form onsubmit="handleLogin(event)" class="text-left space-y-4">
                 <div><label class="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Nama Anggota Pengguna</label>
@@ -320,17 +335,19 @@
       const totalIn = timeFilteredTransactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = timeFilteredTransactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
       
+      // FIX SINKRONISASI INDIKATOR: Menghitung riil seluruh record dengan kategori 'Tabungan / Simpanan' secara presisi
       const akumulasiTabunganRiil = state.transactions.filter(t => t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
 
+      // Sinkronisasi otomatis progress bar goals tabungan berdasarkan nama keterangan transaksi
       state.savingGoals.forEach(g => {
-        const matches = state.transactions.filter(t => t.desc.includes(`Menabung: ${g.name}`));
+        const matches = state.transactions.filter(t => t.desc.toLowerCase().includes(`menabung: ${g.name.toLowerCase()}`) || t.desc.toLowerCase() === g.name.toLowerCase());
         g.current = matches.reduce((acc, curr) => acc + curr.amount, 0);
       });
 
       root.innerHTML = `
         <header class="w-full bg-[var(--bg-card)] border-b-2 border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md">
-          <h1 class="font-black text-lg tracking-tight text-[var(--text-main)]">KolaBuku ${state.isLoading?'(...)':''}</h1>
+          <h1 class="font-black text-lg tracking-tight text-[var(--text-main)] lowercase">kolabuku ${state.isLoading?'(...)':''}</h1>
           <div class="flex items-center gap-2">
             <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-full flex items-center justify-center text-lg shadow-sm"><i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-600'}"></i></button>
             <button onclick="state.screen='auth'; render();" class="w-9 h-9 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center text-lg"><i class="ti ti-logout"></i></button>
@@ -412,7 +429,7 @@
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
-                <input type="text" id="form-desc" required placeholder="Tulis rincian deskripsi..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
+                <input type="text" id="form-desc" required placeholder="Tulis rincian deskripsi atau pos tabungan..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Nominal Angka (Rp)</label>
@@ -459,12 +476,13 @@
               const pct = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
               return `
                 <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-2xl p-4 relative shadow-md">
-                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span>${g.name}</span><span class="text-emerald-500 font-mono font-black">${pct}%</span></div>
+                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-20"><span>${g.name}</span><span class="text-emerald-500 font-mono font-black">${pct}%</span></div>
                   <div class="flex justify-between text-[10px] text-gray-400 mb-2"><span>Ada: ${formatIDR(g.current)}</span><span>Target: ${formatIDR(g.target)}</span></div>
                   <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border-2 border-[var(--border)]"><div class="h-full bg-[var(--green-in)] rounded-full" style="width: ${pct}%"></div></div>
                   
-                  <div class="absolute right-2.5 top-5 flex items-center justify-center">
-                    <button onclick="deleteSavingGoal('${g.id}')" class="w-8 h-8 bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
+                  <div class="absolute right-2.5 top-4 flex gap-1">
+                    <button onclick="editSavingGoal('${g.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-xs" title="Edit Goals"><i class="ti ti-pencil"></i></button>
+                    <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-xs" title="Hapus"><i class="ti ti-trash"></i></button>
                   </div>
                 </div>`;
             }).join('')}
@@ -472,7 +490,7 @@
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-5 shadow-md">
             <h3 class="text-xs font-bold uppercase text-[var(--green-in)] mb-3">🎯 Set Target Celengan Baru</h3>
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
-              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: Laptop Baru Kerja" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
               <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-black focus:outline-none focus:border-[var(--green-in)] text-[var(--text-main)]"></div>
               <button type="submit" class="w-full bg-[var(--green-in)] text-white font-bold py-3 rounded-xl text-xs shadow-sm border-b-4 border-black/15">Kunci Target</button>
             </form>
