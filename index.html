@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KitaFinance - Pendamping Finansial Bersama</title>
+  <title>KitaFinance - Digital Family Cashflow</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <script>
@@ -17,10 +17,10 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     
     html[data-theme="light"] {
-      --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --border: #cbd5e1;
+      --bg-body: #f4f6fa; --bg-card: #ffffff; --text-main: #0f172a; --border: #cbd5e1;
     }
     html[data-theme="dark"] {
-      --bg-body: #09090f; --bg-card: #151526; --text-main: #f8fafc; --border: #26263f;
+      --bg-body: #09090e; --bg-card: #141424; --text-main: #f8fafc; --border: #24243a;
     }
     body { background-color: var(--bg-body); color: var(--text-main); }
   </style>
@@ -31,7 +31,7 @@
   <div id="toast-container" class="fixed top-4 z-50 w-full max-w-xs px-4 pointer-events-none flex flex-col gap-2"></div>
 
   <script>
-    // URL Cloud Database dari Google Apps Script Anda
+    // URL Cloud Database dari Google Apps Script Anda (Tetap Dipertahankan)
     const CLOUD_URL = "PASTE_URL_APPS_SCRIPT_DI_SINI";
 
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
@@ -46,8 +46,25 @@
       transactions: []
     };
 
-    // ── INTEGRASI CLOUD STORAGE (GOOGLE DRIVE VIA SCRIPT) ──
+    // Load Data Cache LocalStorage
+    if(localStorage.getItem('kita_finance_cloud_v5')) {
+      const saved = JSON.parse(localStorage.getItem('kita_finance_cloud_v5'));
+      state.transactions = saved.transactions || state.transactions;
+      state.savingGoals = saved.savingGoals || state.savingGoals;
+      state.expenseCategories = saved.expenseCategories || state.expenseCategories;
+      state.incomeCategories = saved.incomeCategories || state.incomeCategories;
+    }
+
+    function saveState() {
+      localStorage.setItem('kita_finance_cloud_v5', JSON.stringify({
+        transactions: state.transactions, savingGoals: state.savingGoals,
+        expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories
+      }));
+    }
+
+    // ── INTEGRASI CLOUD STORAGE GOOGLE DRIVE ──
     async function syncToCloud() {
+      saveState();
       if(!CLOUD_URL || CLOUD_URL.includes("PASTE_URL")) return;
       try {
         await fetch(CLOUD_URL, {
@@ -71,6 +88,7 @@
           state.savingGoals = cloudData.savingGoals || [];
           state.expenseCategories = cloudData.expenseCategories || state.expenseCategories;
           state.incomeCategories = cloudData.incomeCategories || state.incomeCategories;
+          saveState();
           showToast('📥 Data Cloud Berhasil Dimuat!');
         }
       } catch(e) { console.error("Gagal memuat dari cloud", e); }
@@ -104,17 +122,20 @@
       if(!user) return;
       state.currentUser = user;
       state.screen = 'main';
-      await loadFromCloud(); // Tarik data online pas login
+      await loadFromCloud();
       render();
     }
 
+    // CRUD Transaksi Kas (Dioptimalkan Mengikuti Filter Sub-Tab Atas)
     async function saveTransaction(e) {
       e.preventDefault();
       const id = document.getElementById('form-id').value;
       const desc = document.getElementById('form-desc').value.trim();
       const amount = parseInt(document.getElementById('form-amount').value) || 0;
-      const type = document.getElementById('form-type').value;
       const category = document.getElementById('form-cat').value;
+      
+      // Jenis kas otomatis mengikuti tab riwayat yang sedang aktif (expense/income)
+      const type = state.subRiwayatTab; 
 
       if(!desc || amount <= 0) return showToast('Harap isi data dengan lengkap!', 'error');
 
@@ -129,16 +150,19 @@
       }
       state.editingTxId = null;
       render();
-      await syncToCloud(); // Push otomatis ke Google Drive
+      await syncToCloud();
     }
 
     function openEdit(id) {
-      state.editingTxId = id; state.activeTab = 'riwayat'; render();
+      state.editingTxId = id;
+      state.activeTab = 'riwayat';
       const tx = state.transactions.find(t => t.id === id);
+      state.subRiwayatTab = tx.type; // Sesuaikan tab atas dengan data yang diedit
+      render();
+      
       document.getElementById('form-id').value = tx.id;
       document.getElementById('form-desc').value = tx.desc;
       document.getElementById('form-amount').value = tx.amount;
-      document.getElementById('form-type').value = tx.type;
       updateFormCategories();
       document.getElementById('form-cat').value = tx.category;
     }
@@ -195,8 +219,8 @@
       if(state.screen === 'auth') {
         root.innerHTML = `
           <div class="w-full flex-1 flex flex-col items-center justify-center p-6 mt-16">
-            <div class="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-6 text-center shadow-md">
-              <div class="w-16 h-16 bg-[#db2777] rounded-xl flex items-center justify-center text-white mx-auto mb-4"><i class="ti ti-wallet text-3xl"></i></div>
+            <div class="w-full bg-[var(--bg-card)] border border-[var(--border)] rounded-[2rem] p-6 text-center shadow-xl">
+              <div class="w-16 h-16 bg-[#db2777] rounded-2xl flex items-center justify-center text-white mx-auto mb-4"><i class="ti ti-wallet text-3xl"></i></div>
               <h2 class="text-2xl font-black text-[#db2777]">KitaFinance</h2>
               <p class="text-xs text-gray-400 mt-1 mb-6 font-medium">Sistem Cloud Terpusat Google Drive</p>
               <form onsubmit="handleLogin(event)" class="text-left space-y-4">
@@ -217,7 +241,7 @@
         <header class="w-full bg-[var(--bg-card)] border-b border-[var(--border)] p-4 flex items-center justify-between sticky top-0 z-40">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 bg-[#db2777] rounded-lg flex items-center justify-center text-white font-bold"><i class="ti ti-bolt"></i></div>
-            <h1 class="font-black text-sm">KitaFinance ${state.isLoading?'(Memuat...)':''}</h1>
+            <h1 class="font-black text-sm tracking-tight">KitaFinance ${state.isLoading?'(...)':''}</h1>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="toggleTheme()" class="w-9 h-9 bg-[var(--bg-body)] border border-[var(--border)] rounded-full flex items-center justify-center text-lg"><i class="ti ${state.theme==='dark'?'ti-sun text-amber-400':'ti-moon text-indigo-600'}"></i></button>
@@ -227,7 +251,7 @@
 
         <main class="w-full px-4 pt-4 flex-1 pb-12">${renderTabContent(saldo, totalIn, totalOut)}</main>
 
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--bg-card)] border-t border-[var(--border)] flex justify-around items-center z-50 px-2 rounded-t-3xl shadow-xl">
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-20 bg-[var(--bg-card)] border-t border-[var(--border)] flex justify-around items-center z-50 px-2 rounded-t-[2rem] shadow-2xl">
           <button onclick="state.activeTab='dashboard'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='dashboard'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-smart-home text-xl mb-0.5"></i>Beranda</button>
           <button onclick="state.activeTab='riwayat'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='riwayat'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-receipt text-xl mb-0.5"></i>Riwayat</button>
           <button onclick="state.activeTab='tabungan'; render()" class="flex flex-col items-center justify-center text-[10px] font-bold ${state.activeTab==='tabungan'?'text-[#db2777]':'text-gray-400'}"><i class="ti ti-pig-money text-xl mb-0.5"></i>Tabungan</button>
@@ -239,24 +263,26 @@
     function renderTabContent(saldo, totalIn, totalOut) {
       if(state.activeTab === 'dashboard') {
         return `
-          <div class="bg-[#db2777] rounded-3xl p-6 text-white shadow-md mb-4">
-            <span class="text-xs font-semibold opacity-90 block uppercase">Sisa Saldo Bersama Kas</span>
-            <h2 class="text-3xl font-black my-1">${formatIDR(saldo)}</h2>
+          <div class="bg-[#db2777] rounded-[2rem] p-6 text-white shadow-xl mb-4">
+            <span class="text-xs font-semibold opacity-90 block uppercase tracking-wider">Sisa Saldo Bersama Kas</span>
+            <h2 class="text-3xl font-black my-1 tracking-tight">${formatIDR(saldo)}</h2>
             <div class="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-white/20">
-              <div class="bg-black/20 p-3 rounded-xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pemasukan</span><span class="text-emerald-300 text-xs font-black">+ ${formatIDR(totalIn)}</span></div>
-              <div class="bg-black/20 p-3 rounded-xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pengeluaran</span><span class="text-rose-300 text-xs font-black">- ${formatIDR(totalOut)}</span></div>
+              <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pemasukan</span><span class="text-emerald-400 text-sm font-black">+ ${formatIDR(totalIn)}</span></div>
+              <div class="bg-black/20 p-3 rounded-2xl"><span class="text-[9px] uppercase font-bold opacity-70 block">Pengeluaran</span><span class="text-rose-400 text-sm font-black">- ${formatIDR(totalOut)}</span></div>
             </div>
           </div>
+          
           <div class="grid grid-cols-2 gap-2 mb-4">
-            <div class="bg-[#2563eb] text-white p-3.5 rounded-xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Brand Operasional</span>Rock and Ross</div>
-            <div class="bg-[#7c3aed] text-white p-3.5 rounded-xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Database Cloud</span>Google Drive Connected</div>
+            <div class="bg-[#2563eb] text-white p-3.5 rounded-2xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Brand Operasional</span>Rock and Ross</div>
+            <div class="bg-[#7c3aed] text-white p-3.5 rounded-2xl font-bold text-xs"><span class="text-[9px] block opacity-70 uppercase">Database Cloud</span>Google Drive Connected</div>
           </div>
+
           <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-history text-pink-500"></i> Mutasi Arus Terkini</h3></div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)] px-4">
-            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi.</p>': state.transactions.slice(0,4).map(t => `
-              <div class="py-3 flex justify-between items-center text-xs">
-                <div><h4 class="font-bold">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category} • Oleh ${t.user}</span></div>
-                <span class="font-black ${t.type==='income'?'text-emerald-500':'text-rose-500'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 shadow-sm">
+            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi harian.</p>': state.transactions.slice(0,4).map(t => `
+              <div class="py-3.5 flex justify-between items-center text-xs">
+                <div><h4 class="font-bold text-sm">${t.desc}</h4><span class="text-[10px] font-medium text-gray-400">${t.category} • Oleh ${t.user}</span></div>
+                <span class="font-black text-sm ${t.type==='income'?'text-emerald-500':'text-rose-500'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
               </div>`).join('')}
           </div>`;
       }
@@ -265,33 +291,50 @@
         const isExp = state.subRiwayatTab === 'expense';
         const listData = state.transactions.filter(t => isExp ? t.type==='expense' : t.type==='income');
         return `
-          <div class="w-full flex bg-[var(--bg-card)] border border-[var(--border)] p-1 rounded-xl mb-4">
-            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2 text-xs font-bold rounded-lg ${isExp?'bg-rose-600 text-white':'text-gray-400'}">📉 Pengeluaran</button>
-            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2 text-xs font-bold rounded-lg ${!isExp?'bg-emerald-600 text-white':'text-gray-400'}">📈 Pemasukan</button>
+          <div class="w-full flex bg-[var(--bg-card)] border border-[var(--border)] p-1.5 rounded-2xl mb-4 shadow-sm">
+            <button onclick="state.subRiwayatTab='expense'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${isExp?'bg-rose-600 text-white shadow-md':'text-gray-400'}">📉 Daftar Pengeluaran</button>
+            <button onclick="state.subRiwayatTab='income'; render()" class="flex-1 py-2.5 text-xs font-bold rounded-xl ${!isExp?'bg-emerald-600 text-white shadow-md':'text-gray-400'}">📈 Daftar Pemasukan</button>
           </div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl divide-y divide-[var(--border)] px-4 mb-4 max-h-56 overflow-y-auto">
-            ${listData.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Kosong</p>' : listData.map(t => `
-              <div class="py-3 flex justify-between items-center text-xs">
-                <div><h4 class="font-bold">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category}</span></div>
+
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 mb-4 max-h-56 overflow-y-auto shadow-sm">
+            ${listData.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada catatan pada kategori ini.</p>' : listData.map(t => `
+              <div class="py-3.5 flex justify-between items-center text-xs">
+                <div><h4 class="font-bold text-sm">${t.desc}</h4><span class="text-[10px] text-gray-400">${t.category}</span></div>
                 <div class="flex items-center gap-2">
-                  <span class="font-bold ${isExp?'text-rose-500':'text-emerald-500'}">${formatIDR(t.amount)}</span>
-                  <button onclick="openEdit('${t.id}')" class="text-blue-400 text-sm p-1"><i class="ti ti-edit"></i></button>
-                  <button onclick="deleteTx('${t.id}')" class="text-rose-500 text-sm p-1"><i class="ti ti-trash"></i></button>
+                  <span class="font-black text-sm ${isExp?'text-rose-500':'text-emerald-500'}">${formatIDR(t.amount)}</span>
+                  <button onclick="openEdit('${t.id}')" class="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-edit"></i></button>
+                  <button onclick="deleteTx('${t.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center text-sm"><i class="ti ti-trash"></i></button>
                 </div>
               </div>`).join('')}
           </div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-            <h3 class="text-xs font-bold uppercase text-[#db2777] mb-3">${state.editingTxId ? '⚙️ Perbarui Transaksi' : '✍ ... Catat Transaksi'}</h3>
-            <form onsubmit="saveTransaction(event)" class="space-y-3 text-xs">
+
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-2 h-4 ${isExp?'bg-rose-500':'bg-emerald-500'} rounded-full"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider">${state.editingTxId ? '⚙️ Perbarui Rekap' : '✍️ Tambah Catatan ' + (isExp ? 'Pengeluaran' : 'Pemasukan')}</h3>
+            </div>
+            
+            <form onsubmit="saveTransaction(event)" class="space-y-4 text-xs">
               <input type="hidden" id="form-id">
-              <div class="grid grid-cols-2 gap-2">
-                <div><label class="block text-gray-400 mb-1">Jenis Kas</label>
-                  <select id="form-type" onchange="updateFormCategories()" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-semibold"><option value="expense">Pengeluaran (-)</option><option value="income">Pemasukan (+)</option></select></div>
-                <div><label class="block text-gray-400 mb-1">Kategori</label><select id="form-cat" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-semibold"></select></div>
+              
+              <div>
+                <label class="block text-gray-400 font-bold mb-1.5">Pilih Kategori Rincian</label>
+                <select id="form-cat" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500"></select>
               </div>
-              <div><label class="block text-gray-400 mb-1">Keterangan</label><input type="text" id="form-desc" required placeholder="Detail pengeluaran..." class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs"></div>
-              <div><label class="block text-gray-400 mb-1">Nominal (Rp)</label><input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-bold"></div>
-              <button type="submit" class="w-full bg-[#db2777] text-white font-bold py-2.5 rounded-lg text-xs">Simpan Transaksi</button>
+              
+              <div>
+                <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
+                <input type="text" id="form-desc" required placeholder="${isExp ? 'Contoh: Kulakan Bahan Baku Casing Tumbler' : 'Contoh: Pendapatan harian outlet'}" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-pink-500">
+              </div>
+              
+              <div>
+                <label class="block text-gray-400 font-bold mb-1.5">Nominal Angka (Rp)</label>
+                <input type="number" id="form-amount" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-bold focus:outline-none focus:border-pink-500">
+              </div>
+              
+              <button type="submit" class="w-full ${isExp?'bg-rose-600 hover:bg-rose-500':'bg-emerald-600 hover:bg-emerald-500'} text-white font-bold py-3 rounded-xl text-xs shadow-md">
+                <i class="ti ti-device-floppy mr-1"></i> Simpan Catatan Rekap
+              </button>
             </form>
           </div>`;
       }
@@ -300,13 +343,13 @@
         return `
           <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-target text-emerald-500"></i> Alokasi Tabungan Goals</h3></div>
           <div class="space-y-3 mb-5">
-            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target</p>' : state.savingGoals.map(g => {
+            ${state.savingGoals.length === 0 ? '<p class="text-center bg-[var(--bg-card)] border border-[var(--border)] py-6 text-xs text-gray-500 rounded-xl">Belum ada target pos tabungan bersama.</p>' : state.savingGoals.map(g => {
               const pct = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
               return `
-                <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 relative shadow-sm">
-                  <div class="flex justify-between font-bold text-xs mb-1 pr-14"><span>${g.name}</span><span class="text-emerald-500">${pct}%</span></div>
+                <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 relative shadow-sm">
+                  <div class="flex justify-between font-bold text-xs mb-1.5 pr-14"><span>${g.name}</span><span class="text-emerald-500 font-mono">${pct}%</span></div>
                   <div class="flex justify-between text-[10px] text-gray-400 mb-2"><span>Ada: ${formatIDR(g.current)}</span><span>Target: ${formatIDR(g.target)}</span></div>
-                  <div class="w-full bg-[var(--bg-body)] h-2 rounded-full overflow-hidden border border-[var(--border)]"><div class="h-full bg-emerald-500" style="width: ${pct}%"></div></div>
+                  <div class="w-full bg-[var(--bg-body)] h-2.5 rounded-full overflow-hidden border border-[var(--border)]"><div class="h-full bg-emerald-500 rounded-full" style="width: ${pct}%"></div></div>
                   <div class="absolute right-2.5 top-3.5 flex flex-col gap-1">
                     <button onclick="addSavingBalance('${g.id}')" class="w-7 h-7 bg-emerald-600 text-white rounded-md flex items-center justify-center text-xs"><i class="ti ti-coin"></i></button>
                     <button onclick="deleteSavingGoal('${g.id}')" class="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-md flex items-center justify-center text-xs"><i class="ti ti-trash"></i></button>
@@ -314,12 +357,12 @@
                 </div>`;
             }).join('')}
           </div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4">
-            <h3 class="text-xs font-bold uppercase text-emerald-500 mb-2">🎯 Set Target Celengan Baru</h3>
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 shadow-md">
+            <h3 class="text-xs font-bold uppercase text-emerald-500 mb-3">🎯 Set Target Celengan Baru</h3>
             <form onsubmit="addNewSavingGoal(event)" class="space-y-3 text-xs">
-              <div><label class="block text-gray-400 mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs"></div>
-              <div><label class="block text-gray-400 mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs font-bold"></div>
-              <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-xs">Kunci Target</button>
+              <div><label class="block text-gray-400 font-bold mb-1">Nama Target Tabungan</label><input type="text" id="goal-name" required placeholder="Misal: 💻 Beli Device Baru" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs"></div>
+              <div><label class="block text-gray-400 font-bold mb-1">Target Jumlah Dana (Rp)</label><input type="number" id="goal-target" required placeholder="0" class="w-full bg-[var(--bg-body)] border border-[var(--border)] rounded-xl p-3 text-xs font-bold"></div>
+              <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs">Kunci Target</button>
             </form>
           </div>`;
       }
@@ -327,25 +370,25 @@
       if(state.activeTab === 'settings') {
         return `
           <div class="flex items-center justify-between mb-3"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-settings text-indigo-500"></i> Kustomisasi Kategori Finansial</h3></div>
-          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 space-y-4 shadow-sm text-xs mb-4">
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-3xl p-5 space-y-5 shadow-sm text-xs mb-4">
             <div>
               <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pengeluaran (Expense)</label>
               <div class="flex gap-2 mb-2">
-                <input type="text" id="new-exp-cat" placeholder="Contoh: Pembelian Cup" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2 text-xs">
-                <button onclick="addNewCategory('expense')" class="bg-[#db2777] text-white font-bold px-3 rounded-lg text-xs">Add</button>
+                <input type="text" id="new-exp-cat" placeholder="Contoh: Pembelian Cup" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs">
+                <button onclick="addNewCategory('expense')" class="bg-[#db2777] text-white font-bold px-3 rounded-xl text-xs">Add</button>
               </div>
-              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-xl">
-                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2 py-0.5 border border-[var(--border)] rounded text-[10px] font-medium">${c}</span>`).join('')}
+              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-2xl border border-[var(--border)]">
+                ${state.expenseCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg text-[10px] font-medium shadow-sm">${c}</span>`).join('')}
               </div>
             </div>
-            <div class="border-t border-[var(--border)] pt-3">
+            <div class="border-t border-[var(--border)] pt-4">
               <label class="block text-gray-400 font-bold text-[10px] uppercase mb-1.5">Rincian Pos Pemasukan (Income)</label>
               <div class="flex gap-2 mb-2">
-                <input type="text" id="new-inc-cat" placeholder="Contoh: Sales Event" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2 text-xs">
-                <button onclick="addNewCategory('income')" class="bg-blue-600 text-white font-bold px-3 rounded-lg text-xs">Add</button>
+                <input type="text" id="new-inc-cat" placeholder="Contoh: Sales Event" class="flex-1 bg-[var(--bg-body)] border border-[var(--border)] rounded-lg p-2.5 text-xs">
+                <button onclick="addNewCategory('income')" class="bg-blue-600 text-white font-bold px-3 rounded-xl text-xs">Add</button>
               </div>
-              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-xl">
-                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2 py-0.5 border border-[var(--border)] rounded text-[10px] font-medium">${c}</span>`).join('')}
+              <div class="flex flex-wrap gap-1 bg-[var(--bg-body)] p-2 rounded-2xl border border-[var(--border)]">
+                ${state.incomeCategories.map(c => `<span class="bg-[var(--bg-card)] px-2.5 py-1 border border-[var(--border)] rounded-lg text-[10px] font-medium shadow-sm">${c}</span>`).join('')}
               </div>
             </div>
           </div>`;
@@ -353,10 +396,10 @@
     }
 
     function updateFormCategories() {
-      const typeSel = document.getElementById('form-type');
       const catSel = document.getElementById('form-cat');
-      if(!typeSel || !catSel) return;
-      const arr = typeSel.value === 'expense' ? state.expenseCategories : state.incomeCategories;
+      if(!catSel) return;
+      // Dropdown kategori sekarang otomatis membaca dari status tab yang di-klik pengguna di atas
+      const arr = state.subRiwayatTab === 'expense' ? state.expenseCategories : state.incomeCategories;
       catSel.innerHTML = arr.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
