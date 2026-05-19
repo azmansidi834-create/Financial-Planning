@@ -58,6 +58,21 @@
     const DEFAULT_EXP_CATS = ['Bahan Baku', 'Operasional', 'Makan & Kopi', 'Transport', 'Hiburan', 'Lainnya'];
     const DEFAULT_INC_CATS = ['Omset Penjualan', 'Gaji Pokok', 'Freelance Proyek', 'Investasi'];
 
+    // Pemetaan Ikon Global untuk Kategori Transaksi
+    const CATEGORY_ICONS = {
+      'Bahan Baku': 'ti-box-seam',
+      'Operasional': 'ti-settings',
+      'Makan & Kopi': 'ti-soup',
+      'Transport': 'ti-car',
+      'Hiburan': 'ti-device-gamepad-2',
+      'Lainnya': 'ti-category',
+      'Omset Penjualan': 'ti-building-store',
+      'Gaji Pokok': 'ti-cash',
+      'Freelance Proyek': 'ti-briefcase',
+      'Investasi': 'ti-trending-up',
+      'Tabungan / Simpanan': 'ti-pig-money'
+    };
+
     let state = {
       screen: 'auth', theme: 'light', activeTab: 'dashboard', subRiwayatTab: 'expense',
       timeFilter: 'month', showSavings: true,
@@ -68,13 +83,15 @@
       transactions: []
     };
 
+    // Alokasi Limit Maksimal Anggaran Pengguna (Monitoring Periodik)
     const BUDGET_LIMITS = {
-      'Makan & Kopi': 2000000, 'Transport': 1000000, 'Hiburan': 1000000,
-      'Bahan Baku': 5000000, 'Operasional': 2000000, 'Lainnya': 1000000
+      daily: 100000,     // Sisa Pengeluaran Harian Aman: 100 Ribu
+      weekly: 700000,    // Sisa Pengeluaran Mingguan Aman: 700 Ribu
+      monthly: 3000000   // Limit Keseluruhan Bulanan
     };
 
-    if(localStorage.getItem('kolabuku_state_final')) {
-      const saved = JSON.parse(localStorage.getItem('kolabuku_state_final'));
+    if(localStorage.getItem('kolabuku_state_final_v15')) {
+      const saved = JSON.parse(localStorage.getItem('kolabuku_state_final_v15'));
       state.transactions = saved.transactions || [];
       state.savingGoals = saved.savingGoals || [];
       state.expenseCategories = saved.expenseCategories || state.expenseCategories;
@@ -86,7 +103,7 @@
     document.documentElement.setAttribute('data-theme', state.theme);
 
     function saveState() {
-      localStorage.setItem('kolabuku_state_final', JSON.stringify({
+      localStorage.setItem('kolabuku_state_final_v15', JSON.stringify({
         transactions: state.transactions, savingGoals: state.savingGoals,
         expenseCategories: state.expenseCategories, incomeCategories: state.incomeCategories,
         showSavings: state.showSavings, theme: state.theme
@@ -151,6 +168,28 @@
           return tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear();
         }
       });
+    }
+
+    // Fungsi Kalkulasi Monitoring Pengeluaran Berdasarkan Periode Waktu Riil
+    function getPeriodSpendingStats() {
+      const now = new Date();
+      let daily = 0; let weekly = 0; let monthly = 0;
+
+      state.transactions.forEach(tx => {
+        if (tx.type !== 'expense') return;
+        const txDate = new Date(tx.date);
+        
+        // Harian (Hari ini)
+        if(txDate.toDateString() === now.toDateString()) daily += tx.amount;
+        
+        // Mingguan (7 hari terakhir)
+        if((now - txDate) <= 7 * 24 * 60 * 60 * 1000) weekly += tx.amount;
+        
+        // Bulanan (Bulan berjalan)
+        if(txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()) monthly += tx.amount;
+      });
+
+      return { daily, weekly, monthly };
     }
 
     function showToast(msg, type='success') {
@@ -272,47 +311,6 @@
       render(); await syncToCloud();
     }
 
-    function generateSmartAnalysis(totalIn, totalOut) {
-      const today = new Date().getDate();
-      const dailyAverage = totalOut / (today || 1);
-      let dailyStatusHtml = "";
-      
-      if (dailyAverage > 250000) {
-        dailyStatusHtml = `<div class="bg-rose-500 text-white p-3 rounded-xl font-bold mb-2 text-xs flex items-center gap-2"><i class="ti ti-alert-triangle-filled"></i> <span>Harian Over-Budget! Rata-rata kas keluar (${formatIDR(dailyAverage)}) melewati batas aman.</span></div>`;
-      } else {
-        dailyStatusHtml = `<div class="bg-emerald-500 text-white p-3 rounded-xl font-bold mb-2 text-xs flex items-center gap-2"><i class="ti ti-circle-check-filled"></i> <span>Arus Harian Aman! Pengeluaran terkontrol dengan baik di angka ${formatIDR(dailyAverage)}.</span></div>`;
-      }
-
-      let categoryLeakHtml = "";
-      const catTotals = {};
-      state.transactions.filter(t => t.type === 'expense').forEach(t => { catTotals[t.category] = (catTotals[t.category] || 0) + t.amount; });
-      
-      let overBudgetCategories = [];
-      for (const cat in catTotals) {
-        const limit = BUDGET_LIMITS[cat] || 1500000;
-        if (catTotals[cat] > limit) { overBudgetCategories.push(`${cat}`); }
-      }
-
-      if (overBudgetCategories.length > 0) {
-        categoryLeakHtml = `<div class="bg-amber-500 text-white p-3 rounded-xl font-bold mb-3 text-xs"><i class="ti ti-info-square-rounded-filled"></i> Kuota limit jebol pada kategori: <span class="underline">${overBudgetCategories.join(', ')}</span>.</div>`;
-      } else {
-        categoryLeakHtml = `<div class="bg-blue-500 text-white p-3 rounded-xl font-bold mb-3 text-xs"><i class="ti ti-thumb-up-filled"></i> Semua pos pengeluaran kategori bulanan masih aman di dalam batas kuota anggaran.</div>`;
-      }
-
-      let recommendationHtml = "";
-      const totalSaving = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
-      const savingRate = totalIn > 0 ? (totalSaving / totalIn) * 100 : 0;
-      if (totalOut > totalIn && totalIn > 0) {
-        recommendationHtml = `⚠️ <b>Rekomendasi Bulanan:</b> Defisit anggaran terdeteksi! Segera rem pengeluaran non-pokok untuk minggu ini.`;
-      } else if (savingRate < 15 && totalIn > 0) {
-        recommendationHtml = `💡 <b>Saran Finansial:</b> Alokasi dana simpanan baru ${Math.round(savingRate)}%. Cobalah prioritaskan menabung di awal bulan.`;
-      } else {
-        recommendationHtml = `🎉 <b>Saran Finansial:</b> Keuangan dalam performa prima. Sisa surplus kas bebas dialokasikan ke target tabungan terdekat.`;
-      }
-
-      return { dailyStatusHtml, categoryLeakHtml, recommendationHtml };
-    }
-
     function render() {
       const root = document.getElementById('app');
       if(state.screen === 'auth') {
@@ -335,11 +333,10 @@
       const totalIn = timeFilteredTransactions.filter(t => t.type==='income').reduce((a,b)=>a+b.amount, 0);
       const totalOut = timeFilteredTransactions.filter(t => t.type==='expense').reduce((a,b)=>a+b.amount, 0);
       
-      // REAL TABUNGAN FIX: Membaca mutasi pengeluaran riil berpos kategori 'Tabungan / Simpanan'
       const akumulasiTabunganRiil = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan').reduce((a,b)=>a+b.amount, 0);
       const saldo = totalIn - totalOut;
 
-      // Sinkronisasi dinamis progress bar di tab Tabungan
+      // Sinkronisasi kemajuan target di halaman tabungan
       state.savingGoals.forEach(g => {
         const matches = state.transactions.filter(t => t.type === 'expense' && t.category === 'Tabungan / Simpanan' && t.desc.toLowerCase() === g.name.toLowerCase());
         g.current = matches.reduce((acc, curr) => acc + curr.amount, 0);
@@ -367,7 +364,18 @@
 
     function renderTabContent(saldo, totalIn, totalOut, timeFilteredTransactions, akumulasiTabunganRiil) {
       if(state.activeTab === 'dashboard') {
-        const smartAnalysis = generateSmartAnalysis(totalIn, totalOut);
+        const currentSpend = getPeriodSpendingStats();
+        
+        // Hitung Data Alokasi Kategori untuk Chart Donut SVG
+        const catTotals = {};
+        let totalExpenseForChart = 0;
+        state.transactions.filter(t => t.type === 'expense').forEach(t => {
+          catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+          totalExpenseForChart += t.amount;
+        });
+
+        // Warna Solid Khusus untuk Sektor Bagan Chart
+        const CHART_COLORS = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#a855f7', '#6b7280'];
 
         return `
           <div class="bg-[var(--pink-primary)] rounded-[2rem] p-6 text-white shadow-xl mb-4 border-b-4 border-black/20">
@@ -379,7 +387,7 @@
             </div>
           </div>
 
-          <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-5 text-white shadow-lg border-b-4 border-black/15 flex items-center justify-between mb-4">
+          <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-5 text-white shadow-lg border-b-4 border-black/15 flex items-center justify-between mb-5">
             <div>
               <span class="text-[10px] block opacity-80 font-bold uppercase tracking-wider mb-1">Total Tabungan Bersama</span>
               <h3 class="text-xl font-black tracking-tight">${state.showSavings ? formatIDR(akumulasiTabunganRiil) : '•••••••'}</h3>
@@ -388,26 +396,86 @@
               <i class="ti ${state.showSavings ? 'ti-eye' : 'ti-eye-off'}"></i>
             </button>
           </div>
-          
-          <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-brain text-[var(--pink-primary)]"></i> Evaluasi & Analisis Cerdas</h3></div>
-          <div class="space-y-1 mb-4">
-            ${smartAnalysis.dailyStatusHtml}
-            ${smartAnalysis.categoryLeakHtml}
-            <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] text-[var(--text-main)] p-4 rounded-2xl text-xs font-medium shadow-md">
-              <i class="ti ti-bulb-filled text-amber-500 text-sm mr-1"></i> ${smartAnalysis.recommendationHtml}
+
+          <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-clock-play text-indigo-500"></i> Monitoring Alokasi Dana</h3></div>
+          <div class="grid grid-cols-3 gap-2.5 mb-5">
+            <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] p-3 rounded-2xl text-center shadow-sm">
+              <span class="text-[10px] font-bold text-gray-400 block uppercase">Harian</span>
+              <div class="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full my-2 overflow-hidden">
+                <div class="h-full bg-rose-500" style="width: ${Math.min((currentSpend.daily/BUDGET_LIMITS.daily)*100, 100)}%"></div>
+              </div>
+              <p class="text-[10px] font-black ${currentSpend.daily > BUDGET_LIMITS.daily ? 'text-rose-500' : 'text-emerald-500'}">Sisa:<br>${formatIDR(Math.max(BUDGET_LIMITS.daily - currentSpend.daily, 0))}</p>
+              <span class="text-[9px] text-gray-400 block mt-1">Limit: 100rb</span>
             </div>
+            <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] p-3 rounded-2xl text-center shadow-sm">
+              <span class="text-[10px] font-bold text-gray-400 block uppercase">Mingguan</span>
+              <div class="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full my-2 overflow-hidden">
+                <div class="h-full bg-amber-500" style="width: ${Math.min((currentSpend.weekly/BUDGET_LIMITS.weekly)*100, 100)}%"></div>
+              </div>
+              <p class="text-[10px] font-black ${currentSpend.weekly > BUDGET_LIMITS.weekly ? 'text-rose-500' : 'text-emerald-500'}">Sisa:<br>${formatIDR(Math.max(BUDGET_LIMITS.weekly - currentSpend.weekly, 0))}</p>
+              <span class="text-[9px] text-gray-400 block mt-1">Limit: 700rb</span>
+            </div>
+            <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] p-3 rounded-2xl text-center shadow-sm">
+              <span class="text-[10px] font-bold text-gray-400 block uppercase">Bulanan</span>
+              <div class="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full my-2 overflow-hidden">
+                <div class="h-full bg-purple-500" style="width: ${Math.min((currentSpend.monthly/BUDGET_LIMITS.monthly)*100, 100)}%"></div>
+              </div>
+              <p class="text-[10px] font-black ${currentSpend.monthly > BUDGET_LIMITS.monthly ? 'text-rose-500' : 'text-emerald-500'}">Sisa:<br>${formatIDR(Math.max(BUDGET_LIMITS.monthly - currentSpend.monthly, 0))}</p>
+              <span class="text-[9px] text-gray-400 block mt-1">Limit: 3jt</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-2"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-chart-pie text-[var(--pink-primary)]"></i> Proporsi Sektor Pengeluaran</h3></div>
+          <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl p-4 mb-5 shadow-sm">
+            ${totalExpenseForChart === 0 ? `<p class="text-xs text-gray-400 text-center py-4">Belum ada data belanja yang keluar bulan ini.</p>` : `
+              <div class="flex items-center justify-center gap-6">
+                <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="var(--border)" stroke-width="4"></circle>
+                  ${(() => {
+                    let accPercent = 0;
+                    return Object.keys(catTotals).map((catName, idx) => {
+                      const pct = (catTotals[catName] / totalExpenseForChart) * 100;
+                      const dArray = `${pct} ${100 - pct}`;
+                      const dOffset = 100 - accPercent;
+                      accPercent += pct;
+                      return `<circle cx="18" cy="18" r="15.915" fill="none" stroke="${CHART_COLORS[idx % CHART_COLORS.length]}" stroke-width="4.5" stroke-dasharray="${dArray}" stroke-dashoffset="${dOffset}"></circle>`;
+                    }).join('');
+                  })()}
+                </svg>
+                <div class="flex-1 space-y-1.5 text-[11px] font-bold">
+                  ${Object.keys(catTotals).slice(0, 4).map((catName, idx) => `
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-1.5 truncate">
+                        <span class="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style="background: ${CHART_COLORS[idx % CHART_COLORS.length]}"></span>
+                        <span class="truncate">${catName}</span>
+                      </div>
+                      <span class="text-gray-400 ml-1 font-mono">${((catTotals[catName]/totalExpenseForChart)*100).toFixed(0)}%</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `}
           </div>
 
           <div class="flex items-center justify-between mb-2 mt-4"><h3 class="text-xs font-bold uppercase tracking-wider text-gray-400"><i class="ti ti-history text-pink-500"></i> Mutasi Arus Terkini</h3></div>
           <div class="bg-[var(--bg-card)] border-2 border-[var(--border)] rounded-3xl divide-y divide-[var(--border)] px-4 shadow-md">
-            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi harian.</p>': state.transactions.slice(0,4).map(t => `
+            ${state.transactions.length === 0 ? '<p class="text-center py-6 text-xs text-gray-500">Belum ada transaksi harian.</p>': state.transactions.slice(0,4).map(t => {
+              const iconCode = CATEGORY_ICONS[t.category] || 'ti-category';
+              const isInc = t.type === 'income';
+              return `
               <div class="py-3.5 flex justify-between items-center text-xs">
-                <div>
-                  <h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4>
-                  <span class="text-[10px] font-medium text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category} • Oleh ${t.user}</span>
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center text-base ${isInc?'bg-emerald-500/10 text-emerald-500':'bg-rose-500/10 text-rose-500'}">
+                    <i class="ti ${iconCode}"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-sm text-[var(--text-main)]">${t.desc}</h4>
+                    <span class="text-[10px] font-medium text-gray-400 block mt-0.5">${getFormattedDate(t.date)} • ${t.category} • Oleh ${t.user}</span>
+                  </div>
                 </div>
-                <span class="font-black text-sm ${t.type==='income'?'text-emerald-600 dark:text-emerald-400':'text-rose-600 dark:text-rose-400'}">${t.type==='income'?'+':'-'} ${formatIDR(t.amount)}</span>
-              </div>`).join('')}
+                <span class="font-black text-sm ${isInc?'text-emerald-600 dark:text-emerald-400':'text-rose-600 dark:text-rose-400'}">${isInc?'+':'-'} ${formatIDR(t.amount)}</span>
+              </div>`;
+            }).join('')}
           </div>`;
       }
 
@@ -429,7 +497,7 @@
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Keterangan Transaksi</label>
-                <input type="text" id="form-desc" required placeholder="Tulis detail rincian atau nama goals tabungan..." class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
+                <input type="text" id="form-desc" required placeholder="Contoh: Makan siang, atau nama target goals tabungan" class="w-full bg-[var(--bg-body)] border-2 border-[var(--border)] rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-pink-500 text-[var(--text-main)]">
               </div>
               <div>
                 <label class="block text-gray-400 font-bold mb-1.5">Nominal Angka (Rp)</label>
